@@ -1,3 +1,5 @@
+# SteleFund Core - Claude Code Documentation
+
 ## Project Overview
 SteleFund Core is a decentralized fund management system with smart contracts that enable governance-controlled fund settings management through voting mechanisms.
 
