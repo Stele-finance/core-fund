@@ -11,7 +11,7 @@ async function main() {
   
   // Governor values
   const QUORUM_PERCENTAGE = 4; // 4%
-  const VOTING_PERIOD = 50400; // 7 days (50400 blocks)
+  const VOTING_PERIOD = 272; // 1 hour for initial testing period, default : 7 days (50400 blocks)
   const VOTING_DELAY = 1; // 1 block
 
   // Deploy Governor
