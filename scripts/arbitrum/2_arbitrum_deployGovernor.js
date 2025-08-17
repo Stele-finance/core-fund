@@ -6,8 +6,8 @@ async function main() {
   console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
   // Arbitrum addresses
-  const tokenAddress = "0xF26A6c38E011E428B2DaC5E874BF26fb12665136"; // Existing STELE token on Arbitrum
-  const timeLockAddress = "YOUR_TIMELOCK_ADDRESS"; // From step 1
+  const tokenAddress = "0x08C9c9EE6F161c6056060BF6AC7fE85e38638619"; // Existing STELE token on Arbitrum
+  const timeLockAddress = "0x914188a8025F45184050cd8aA56BF26c38334183"; // From step 1
   
   // Governor values
   const QUORUM_PERCENTAGE = 4; // 4%
