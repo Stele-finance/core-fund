@@ -1,48 +1,46 @@
-import type { HardhatUserConfig } from "hardhat/config";
-
-import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
-import { configVariable } from "hardhat/config";
+import { HardhatUserConfig } from "hardhat/config";
+import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-ignition";
+import "dotenv/config";
 
 const config: HardhatUserConfig = {
-  plugins: [hardhatToolboxViemPlugin],
   solidity: {
-    profiles: {
-      default: {
-        version: "0.8.28",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-        },
+    version: "0.8.28",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 1000000,
       },
-      production: {
-        version: "0.8.28",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-        },
-      },
+      evmVersion: "cancun",
     },
   },
   networks: {
-    hardhatMainnet: {
-      type: "edr-simulated",
-      chainType: "l1",
+    hardhat: {
+      chainId: 31337,
+      forking: {
+        url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
+      },
     },
-    hardhatOp: {
-      type: "edr-simulated",
-      chainType: "op",
+    mainnet: {
+      url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
+      accounts: [process.env.PRIVATE_KEY || ""],
+      chainId: 1,
     },
-    sepolia: {
-      type: "http",
-      chainType: "l1",
-      url: configVariable("SEPOLIA_RPC_URL"),
-      accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
+    arbitrum: {
+      url: "https://arbitrum-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
+      chainId: 42161,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
   },
+  etherscan: {
+    apiKey: {
+      mainnet: process.env.ETHERSCAN_API_KEY || "",
+      arbitrumOne: process.env.ARBISCAN_API_KEY || "",
+    }
+  },
+  mocha: {
+    timeout: 100000
+  }
 };
 
 export default config;
