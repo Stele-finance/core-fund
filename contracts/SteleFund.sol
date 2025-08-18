@@ -110,9 +110,9 @@ contract SteleFund is ISteleFund {
 
   function deposit(uint256 fundId, address token, uint256 amount) external override {
     bool isSubscribed = ISteleFundInfo(info).isSubscribed(msg.sender, fundId);
-    bool isWhiteListToken = ISteleFundSetting(setting).whiteListTokens(token);
+    bool isInvestable = ISteleFundSetting(setting).isInvestable(token);
     require(isSubscribed, "US");
-    require(isWhiteListToken, "NWT");
+    require(isInvestable, "NWT");
 
     IERC20Minimal(token).transferFrom(msg.sender, address(this), amount);
     ISteleFundInfo(info).increaseFundToken(fundId, token, amount);
@@ -191,7 +191,7 @@ contract SteleFund is ISteleFund {
   }
 
   function exactInputSingle(uint256 fundId, address investor, SwapParams calldata trade) private {
-    require(ISteleFundSetting(setting).whiteListTokens(trade.tokenOut), "NWT");
+    require(ISteleFundSetting(setting).isInvestable(trade.tokenOut), "NWT");
     uint256 tokenBalance = ISteleFundInfo(info).getInvestorTokenAmount(fundId, investor, trade.tokenIn);
     require(trade.amountIn <= tokenBalance, "NET");
 
@@ -216,7 +216,7 @@ contract SteleFund is ISteleFund {
   function exactInput(uint256 fundId, address investor, SwapParams calldata trade) private {
     address tokenOut = getLastTokenFromPath(trade.path);
     (address tokenIn, , ) = Path.decodeFirstPool(trade.path);
-    require(ISteleFundSetting(setting).whiteListTokens(tokenOut), "NWT");
+    require(ISteleFundSetting(setting).isInvestable(tokenOut), "NWT");
     uint256 tokenBalance = ISteleFundInfo(info).getInvestorTokenAmount(fundId, investor, tokenIn);
     require(trade.amountIn <= tokenBalance, "NET");
 

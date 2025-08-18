@@ -16,7 +16,7 @@ contract SteleFundSetting is ISteleFundSetting {
 
   uint256 public override managerFee = 10000; // 10000 : 1%, 3000 : 0.3%
   
-  mapping(address => bool) public override whiteListTokens;
+  mapping(address => bool) public override isInvestable;
 
   modifier onlyOwner() {
     require(msg.sender == owner, 'NO');
@@ -27,8 +27,8 @@ contract SteleFundSetting is ISteleFundSetting {
     owner = msg.sender;
     steleToken = _stele;
     weth9 = _weth9;
-    whiteListTokens[steleToken] = true;
-    whiteListTokens[weth9] = true;
+    isInvestable[steleToken] = true;
+    isInvestable[weth9] = true;
     emit SettingCreated();
   }
 
@@ -43,16 +43,16 @@ contract SteleFundSetting is ISteleFundSetting {
     emit ManagerFeeChanged(_managerFee);
   }
 
-  function setWhiteListToken(address _token) external override onlyOwner {
-    require(whiteListTokens[_token] == false, 'WLT');
-    whiteListTokens[_token] = true;
-    emit WhiteListTokenAdded(_token);
+  function setToken(address _token) external override onlyOwner {
+    require(isInvestable[_token] == false, 'WLT');
+    isInvestable[_token] = true;
+    emit AddToken(_token);
   }
 
-  function resetWhiteListToken(address _token) external override onlyOwner {
-    require(whiteListTokens[_token] == true, 'WLT');
+  function resetToken(address _token) external override onlyOwner {
+    require(isInvestable[_token] == true, 'WLT');
     require(_token != weth9 && _token != steleToken, 'WLT2');
-    whiteListTokens[_token] = false;
-    emit WhiteListTokenRemoved(_token);
+    isInvestable[_token] = false;
+    emit RemoveToken(_token);
   }
 }

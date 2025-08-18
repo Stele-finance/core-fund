@@ -6,7 +6,7 @@ SteleFund Core is a decentralized fund management system with smart contracts th
 ## Contract Architecture
 
 ### Core Contracts
-- **SteleFundSetting.sol**: Fund settings management (whitelist tokens, fees, minimum pool amounts)
+- **SteleFundSetting.sol**: Fund settings management (investable tokens, fees, minimum pool amounts)
 - **SteleFund.sol**: Main fund contract (swaps, deposits/withdrawals)
 - **SteleFundInfo.sol**: Fund information and investor data management
 
@@ -82,8 +82,8 @@ npx hardhat run scripts/arbitrum/3_arbitrum_deploySteleFund.js --network arbitru
 The following functions in SteleFundSetting contract are controlled through governance:
 - `setMinPoolAmount(uint256)`: Set minimum pool amount
 - `setManagerFee(uint256)`: Set manager fee
-- `setWhiteListToken(address)`: Add whitelist token
-- `resetWhiteListToken(address)`: Remove whitelist token
+- `setIsInvestable(address)`: Add investable token
+- `resetIsInvestable(address)`: Remove investable token
 
 ## Development Commands
 
@@ -140,7 +140,7 @@ scripts/
 
 ### SafeGuards
 - 2-day execution delay prevents malicious proposals
-- Whitelist tokens can only be added if they have sufficient liquidity
+- Investable tokens can only be added if they have sufficient liquidity
 - STELE and WETH are non-removable base tokens
 
 ## Integration Notes
@@ -157,8 +157,8 @@ scripts/
 
 ## Common Tasks
 
-### Adding a new whitelist token via governance
-1. Create proposal calling `setWhiteListToken(tokenAddress)`
+### Adding a new investable token via governance
+1. Create proposal calling `setIsInvestable(tokenAddress)`
 2. Vote on proposal for 7 days
 3. Queue proposal in TimeLock
 4. Execute after 2-day delay
