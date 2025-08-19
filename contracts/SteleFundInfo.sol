@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
 import './base/Token.sol';
@@ -18,7 +18,10 @@ contract SteleFundInfo is Token, ISteleFundInfo {
   // Token
   mapping(uint256 => Token[]) public fundTokens;                          // fundTokens[fundId]
   mapping(uint256 => Token[]) public feeTokens;                           // feeTokens[fundId]
-  mapping(uint256 => mapping(address => Token[])) public investorTokens;  // investorTokens[fundId][investor]
+  
+  // Investor Shares
+  mapping(uint256 => mapping(address => uint256)) public investorShares;  // investorShares[fundId][investor]
+  mapping(uint256 => uint256) public totalFundShares;                     // totalFundShares[fundId]
 
   modifier onlyOwner() {
     require(msg.sender == owner, 'NO');
@@ -40,8 +43,12 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     return fundTokens[fundId];
   }
 
-  function getInvestorTokens(uint256 fundId, address investor) external override view returns (Token[] memory) {
-    return investorTokens[fundId][investor];
+  function getInvestorShare(uint256 fundId, address investor) external override view returns (uint256) {
+    return investorShares[fundId][investor];
+  }
+  
+  function getTotalFundValue(uint256 fundId) external override view returns (uint256) {
+    return totalFundShares[fundId];
   }
 
   function getFeeTokens(uint256 fundId) external override view returns (Token[] memory) {
@@ -58,8 +65,14 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     return 0;
   }
 
-  function getInvestorTokenAmount(uint256 fundId, address investor, address token) public override view returns (uint256) {
-    Token[] memory tokens = investorTokens[fundId][investor];
+  function getInvestorSharePercentage(uint256 fundId, address investor) public override view returns (uint256) {
+    uint256 totalShares = totalFundShares[fundId];
+    if (totalShares == 0) return 0;
+    return (investorShares[fundId][investor] * 10000) / totalShares; // Return in basis points (10000 = 100%)
+  }
+
+  function getFeeTokenAmount(uint256 fundId, address token) public override view returns (uint256) {
+    Token[] memory tokens = feeTokens[fundId];
     for (uint256 i=0; i<tokens.length; i++) {
       if (tokens[i].token == token) {
         return tokens[i].amount;
@@ -115,12 +128,18 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     return decreaseToken(fundTokens[fundId], token, amount);
   }
 
-  function increaseInvestorToken(uint256 fundId, address investor, address token, uint256 amount) external override onlyOwner {
-    increaseToken(investorTokens[fundId][investor], token, amount);
+  function increaseInvestorShare(uint256 fundId, address investor, uint256 amount) external override onlyOwner {
+    investorShares[fundId][investor] += amount;
+    totalFundShares[fundId] += amount;
   }
 
-  function decreaseInvestorToken(uint256 fundId, address investor, address token, uint256 amount) external override onlyOwner returns (bool) {
-    return decreaseToken(investorTokens[fundId][investor], token, amount);
+  function decreaseInvestorShare(uint256 fundId, address investor, uint256 amount) external override onlyOwner returns (bool) {
+    require(investorShares[fundId][investor] >= amount, "Insufficient shares");
+    require(totalFundShares[fundId] >= amount, "Insufficient total shares");
+    
+    investorShares[fundId][investor] -= amount;
+    totalFundShares[fundId] -= amount;
+    return true;
   }
 
   function increaseFeeToken(uint256 fundId, address token, uint256 amount) external override onlyOwner {

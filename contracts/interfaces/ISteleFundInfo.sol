@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
 import './IToken.sol';
@@ -21,15 +21,17 @@ interface ISteleFundInfo is IToken {
   function join(uint256 fundId) external;
 
   function getFundTokens(uint256 fundId) external view returns (Token[] memory);
-  function getInvestorTokens(uint256 fundId, address investor) external view returns (Token[] memory);
   function getFeeTokens(uint256 fundId) external view returns (Token[] memory);
   function getFundTokenAmount(uint256 fundId, address token) external view returns (uint256);
-  function getInvestorTokenAmount(uint256 fundId, address investor, address token) external view returns (uint256);
+  function getFeeTokenAmount(uint256 fundId, address token) external view returns (uint256);
+  function getInvestorShare(uint256 fundId, address investor) external view returns (uint256);
+  function getInvestorSharePercentage(uint256 fundId, address investor) external view returns (uint256);
+  function getTotalFundValue(uint256 fundId) external view returns (uint256);
 
   function increaseFundToken(uint256 fundId, address token, uint256 amount) external;
   function decreaseFundToken(uint256 fundId, address token, uint256 amount) external returns (bool);
-  function increaseInvestorToken(uint256 fundId, address investor, address token, uint256 amount) external;
-  function decreaseInvestorToken(uint256 fundId, address investor, address token, uint256 amount) external returns (bool);
+  function increaseInvestorShare(uint256 fundId, address investor, uint256 amount) external;
+  function decreaseInvestorShare(uint256 fundId, address investor, uint256 amount) external returns (bool);
   function increaseFeeToken(uint256 fundId, address token, uint256 amount) external;
   function decreaseFeeToken(uint256 fundId, address token, uint256 amount) external returns (bool);
 }

@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
 interface ISteleFund {
   event Deposit(uint256 fundId, address indexed investor, address token, uint256 amount);
   event Withdraw(uint256 fundId, address indexed investor, address token, uint256 amount, uint256 feeAmount);
-  event Swap(uint256 fundId, address indexed investor, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut);
+  event Swap(uint256 fundId, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut);
   event DepositFee(uint256 fundId, address indexed investor, address token, uint256 amount);
   event WithdrawFee(uint256 fundId, address indexed manager, address token, uint256 amount);
 
@@ -27,7 +27,7 @@ interface ISteleFund {
   }
 
   function deposit(uint256 fundId, address token, uint256 amount) external;
-  function withdraw(uint256 fundId, address token, uint256 amount) external payable;
-  function swap(uint256 fundId, address investor, SwapParams[] calldata trades) external;
-  function withdrawFee(uint256 fundId, address token, uint256 amount) external payable;
+  function withdraw(uint256 fundId, uint256 percentage) external payable;
+  function swap(uint256 fundId, SwapParams[] calldata trades) external;
+  function withdrawFee(uint256 fundId, address token, uint256 percentage) external payable;
 }
