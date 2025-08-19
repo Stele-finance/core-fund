@@ -6,8 +6,8 @@ import './IToken.sol';
 interface ISteleFundInfo is IToken {
   event InfoCreated();
   event OwnerChanged(address owner, address newOwner);
-  event FundCreated(uint256 fundId, address indexed manager);
-  event Subscribe(uint256 fundId, address indexed investor);
+  event Create(uint256 fundId, address indexed manager);
+  event Join(uint256 fundId, address indexed investor);
   
   function owner() external view returns (address _owner);
   function manager(uint256 fundId) external view returns (address _manager);
@@ -15,10 +15,10 @@ interface ISteleFundInfo is IToken {
   function fundIdCount() external view returns (uint256 fundCount);
 
   function setOwner(address newOwner) external;
-  function createFund() external returns (uint256 fundId);
-  function isSubscribed(address investor, uint256 fundId) external view returns (bool);
-  function subscribedFunds(address investor) external view returns (uint256[] memory);
-  function subscribe(uint256 fundId) external;
+  function create() external returns (uint256 fundId);
+  function isJoined(address investor, uint256 fundId) external view returns (bool);
+  function getInvestingFunds(address investor) external view returns (uint256[] memory);
+  function join(uint256 fundId) external;
 
   function getFundTokens(uint256 fundId) external view returns (Token[] memory);
   function getInvestorTokens(uint256 fundId, address investor) external view returns (Token[] memory);

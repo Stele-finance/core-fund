@@ -92,8 +92,8 @@ contract SteleFund is ISteleFund {
     }
     uint256 fundId = converted;
 
-    bool isSubscribed = ISteleFundInfo(info).isSubscribed(msg.sender, fundId);
-    require(isSubscribed, "US");
+    bool isJoined = ISteleFundInfo(info).isJoined(msg.sender, fundId);
+    require(isJoined, "US");
     IWETH9(weth9).deposit{value: amount}();
     ISteleFundInfo(info).increaseFundToken(fundId, weth9, amount);
     ISteleFundInfo(info).increaseInvestorToken(fundId, msg.sender, weth9, amount);
@@ -109,9 +109,9 @@ contract SteleFund is ISteleFund {
   }
 
   function deposit(uint256 fundId, address token, uint256 amount) external override {
-    bool isSubscribed = ISteleFundInfo(info).isSubscribed(msg.sender, fundId);
+    bool isJoined = ISteleFundInfo(info).isJoined(msg.sender, fundId);
     bool isInvestable = ISteleFundSetting(setting).isInvestable(token);
-    require(isSubscribed, "US");
+    require(isJoined, "US");
     require(isInvestable, "NWT");
 
     IERC20Minimal(token).transferFrom(msg.sender, address(this), amount);
@@ -121,9 +121,9 @@ contract SteleFund is ISteleFund {
   }
 
   function withdraw(uint256 fundId, address token, uint256 amount) external payable override {
-    bool isSubscribed = ISteleFundInfo(info).isSubscribed(msg.sender, fundId);
+    bool isJoined = ISteleFundInfo(info).isJoined(msg.sender, fundId);
     uint256 tokenAmount = ISteleFundInfo(info).getInvestorTokenAmount(fundId, msg.sender, token);
-    require(isSubscribed, "US");
+    require(isJoined, "US");
     require(tokenAmount >= amount, "NET");
 
     if (msg.sender == ISteleFundInfo(info).manager(fundId)) {
