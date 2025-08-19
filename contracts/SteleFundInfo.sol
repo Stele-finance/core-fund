@@ -68,7 +68,16 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     return 0;
   }
 
-  function createFund() external override returns (uint256 fundId) {
+  function getInvestingFunds(address investor) external override view returns (uint256[] memory){
+    uint256 fundCount = investingFundCount[investor];
+    uint256[] memory fundIds = new uint256[](fundCount);
+    for (uint256 i=0; i<fundCount; i++) {
+      fundIds[i] = investingFunds[investor][i];
+    }
+    return fundIds;
+  }
+  
+  function create() external override returns (uint256 fundId) {
     require(managingFund[msg.sender] == 0, 'EXIST');
     fundId = ++fundIdCount;
     managingFund[msg.sender] = fundId;
@@ -76,10 +85,10 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     investingFunds[msg.sender][fundCount] = fundId;
     investingFundCount[msg.sender] += 1;
     manager[fundId] = msg.sender;
-    emit FundCreated(fundId, msg.sender);
+    emit Create(fundId, msg.sender);
   }
 
-  function isSubscribed(address investor, uint256 fundId) public override view returns (bool) {
+  function isJoined(address investor, uint256 fundId) public override view returns (bool) {
     uint256 fundCount = investingFundCount[investor];
     for (uint256 i=0; i<fundCount; i++) {
       if (fundId == investingFunds[investor][i]) {
@@ -89,22 +98,13 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     return false;
   }
 
-  function subscribedFunds(address investor) external override view returns (uint256[] memory){
-    uint256 fundCount = investingFundCount[investor];
-    uint256[] memory fundIds = new uint256[](fundCount);
-    for (uint256 i=0; i<fundCount; i++) {
-      fundIds[i] = investingFunds[investor][i];
-    }
-    return fundIds;
-  }
-
-  function subscribe(uint256 fundId) external override {
-    require(!isSubscribed(msg.sender, fundId), 'EXIST');
+  function join(uint256 fundId) external override {
+    require(!isJoined(msg.sender, fundId), 'EXIST');
     uint256 fundCount = investingFundCount[msg.sender];
     investingFunds[msg.sender][fundCount] = fundId;
     investingFundCount[msg.sender] += 1;
     investorCount[fundId] += 1;
-    emit Subscribe(fundId, msg.sender);
+    emit Join(fundId, msg.sender);
   }
 
   function increaseFundToken(uint256 fundId, address token, uint256 amount) external override onlyOwner {

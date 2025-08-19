@@ -19,3 +19,6 @@ package-lock.json
 yarn.lock
 
 cache/
+
+DS_Store.json
+typechain-types/

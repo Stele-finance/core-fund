@@ -8,8 +8,8 @@ async function main() {
   console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
   // Arbitrum addresses
-  const steleTokenAddress = "0xF26A6c38E011E428B2DaC5E874BF26fb12665136"; // Existing STELE token on Arbitrum
-  const timeLockAddress = "YOUR_TIMELOCK_ADDRESS"; // From step 1
+  const steleTokenAddress = "0x08C9c9EE6F161c6056060BF6AC7fE85e38638619"; // Existing STELE token on Arbitrum
+  const timeLockAddress = "0x914188a8025F45184050cd8aA56BF26c38334183"; // From step 1
   const wethTokenAddress = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"; // Arbitrum WETH
 
   console.log(`🎯 Stele Token: ${steleTokenAddress}`);
@@ -68,8 +68,8 @@ async function main() {
   const currentOwner = await steleFundSetting.owner();
   const infoOwner = await steleFundInfo.owner();
   const weth9 = await steleFundSetting.weth9();
-  const stele = await steleFundSetting.stele();
-  
+  const stele = await steleFundSetting.steleToken();
+
   console.log("🎯 Verification Results:");
   console.log(`   SteleFundSetting owner: ${currentOwner}`);
   console.log(`   SteleFundInfo owner: ${infoOwner}`);

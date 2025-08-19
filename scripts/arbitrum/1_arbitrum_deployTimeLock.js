@@ -6,7 +6,7 @@ async function main() {
   console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
   // TimeLock values
-  const MIN_DELAY = 2 * 24 * 60 * 60; // 2 days (after a vote passes, you have 2 days before you can enact)
+  const MIN_DELAY = 3600; // 1 hour (after a vote passes, you have 1 hour before you can enact)
   const proposers = [];
   const executors = [];
   
