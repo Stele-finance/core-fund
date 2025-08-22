@@ -273,7 +273,6 @@ contract SteleFund is ISteleFund, IToken {
           
           // Update state FIRST (before external calls)
           ISteleFundInfo(info).decreaseFundToken(fundId, token, tokenShare);
-          emit Withdraw(fundId, msg.sender, token, tokenShare, 0);
           
           // External calls LAST
           if (token == weth9) {
@@ -286,6 +285,8 @@ contract SteleFund is ISteleFund, IToken {
         }
       }
     }
+    
+    emit Withdraw(fundId, msg.sender);
   }
   
   function _withdrawInvestor(uint256 fundId, uint256 shareToWithdraw, uint256 /* percentage */) private {
@@ -333,10 +334,7 @@ contract SteleFund is ISteleFund, IToken {
           }
           if (feeAmount > 0) {
             ISteleFundInfo(info).increaseFeeToken(fundId, token, feeAmount);
-            emit DepositFee(fundId, msg.sender, token, feeAmount);
           }
-          
-          emit Withdraw(fundId, msg.sender, token, withdrawAmount, feeAmount);
           
           // External calls LAST
           if (withdrawAmount > 0) {
@@ -351,6 +349,8 @@ contract SteleFund is ISteleFund, IToken {
         }
       }
     }
+    
+    emit Withdraw(fundId, msg.sender);
   }
 
   function handleSwap(
@@ -482,7 +482,6 @@ contract SteleFund is ISteleFund, IToken {
     require(isSuccess, "FD");
     
     ISteleFundInfo(info).decreaseFundToken(fundId, token, amount);
-    emit WithdrawFee(fundId, msg.sender, token, amount);
     
     // External calls LAST
     if (token == weth9) {

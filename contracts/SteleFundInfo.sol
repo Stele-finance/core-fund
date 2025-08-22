@@ -149,10 +149,12 @@ contract SteleFundInfo is Token, ISteleFundInfo {
   }
 
   function increaseFeeToken(uint256 fundId, address token, uint256 amount) external override onlyOwner {
+    emit DepositFee(fundId, msg.sender, token, amount);
     increaseToken(feeTokens[fundId], token, amount);
   }
 
   function decreaseFeeToken(uint256 fundId, address token, uint256 amount) external override onlyOwner returns (bool) {
+    emit WithdrawFee(fundId, msg.sender, token, amount);
     return decreaseToken(feeTokens[fundId], token, amount);
   }
 }
