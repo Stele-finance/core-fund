@@ -137,8 +137,8 @@ contract SteleFundInfo is Token, ISteleFundInfo {
   }
 
   function decreaseInvestorShare(uint256 fundId, address investor, uint256 amount) external override onlyOwner returns (bool) {
-    require(investorShares[fundId][investor] >= amount, "Insufficient shares");
-    require(totalFundShares[fundId] >= amount, "Insufficient total shares");
+    require(investorShares[fundId][investor] >= amount, "IS");
+    require(totalFundShares[fundId] >= amount, "ITS");
     
     investorShares[fundId][investor] -= amount;
     totalFundShares[fundId] -= amount;

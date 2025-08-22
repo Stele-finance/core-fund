@@ -15,6 +15,8 @@ contract SteleFundSetting is ISteleFundSetting {
   address public override usdc;
 
   uint256 public override managerFee = 10000; // 10000 : 1%, 3000 : 0.3%
+  uint256 public override maxAssets = 20; // Maximum number of different tokens in portfolio
+  uint256 public override maxSlippage = 300; // Maximum 3% slippage allowed (300 = 3%)
   
   mapping(address => bool) public override isInvestable;
 
@@ -41,6 +43,18 @@ contract SteleFundSetting is ISteleFundSetting {
   function setManagerFee(uint256 _managerFee) external override onlyOwner {
     managerFee = _managerFee;
     emit ManagerFeeChanged(_managerFee);
+  }
+
+  function setMaxAssets(uint256 _maxAssets) external override onlyOwner {
+    require(_maxAssets > 0, 'Invalid max assets');
+    maxAssets = _maxAssets;
+    emit MaxAssetsChanged(_maxAssets);
+  }
+
+  function setMaxSlippage(uint256 _maxSlippage) external override onlyOwner {
+    require(_maxSlippage <= 5000, 'Slippage too high'); // Maximum 50% to prevent abuse
+    maxSlippage = _maxSlippage;
+    emit MaxSlippageChanged(_maxSlippage);
   }
 
   function setToken(address _token) external override onlyOwner {

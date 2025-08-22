@@ -40,6 +40,7 @@ interface IERC20Minimal {
   function allowance(address owner, address spender) external view returns (uint256);
   function approve(address spender, uint256 amount) external returns (bool);
   function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+  function decimals() external view returns (uint8);
 }
 
 contract SteleFund is ISteleFund, IToken {
@@ -51,9 +52,15 @@ contract SteleFund is ISteleFund, IToken {
 
   // Precision scaling for more accurate calculations
   uint256 private constant PRECISION_SCALE = 1e18;
+  uint256 private constant SHARE_DECIMALS = 1e18; // Share tokens use 18 decimals
+  uint256 private constant BASIS_POINTS = 10000; // 100% = 10000 basis points
   
   // Minimum thresholds to prevent dust issues
   uint256 private constant MIN_SHARE_AMOUNT = 1000; // Minimum 1000 wei share
+  uint256 private constant MIN_DEPOSIT_USD = 10; // Minimum $10 deposit
+  
+  // Default slippage constant (can be overridden by settings)
+  uint256 private constant DEFAULT_SLIPPAGE = 300; // Default 3% slippage if not set
   
   address public weth9;
   address public setting;
@@ -77,10 +84,25 @@ contract SteleFund is ISteleFund, IToken {
     usdToken = _usdToken;
   }
 
-  function decode(bytes memory data) private pure returns (bytes32 result) {
-    assembly {
-      result := mload(add(data, 32))
+  // Safe fund ID parsing from calldata
+  function parseFundId(bytes memory data) private pure returns (uint256 fundId) {
+    require(data.length > 0 && data.length <= 32, "IDL"); // Invalid data length
+
+    // Use standard ABI decoding for safety
+    if (data.length == 32) {
+      // Standard uint256 encoding
+      fundId = abi.decode(data, (uint256));
+    } else {
+      // Handle shorter data safely
+      bytes32 padded;
+      for (uint256 i = 0; i < data.length; i++) {
+        padded |= bytes32(data[i]) << (8 * (31 - i));
+      }
+      fundId = uint256(padded) >> (8 * (32 - data.length));
     }
+    
+    // Prevent unreasonably large fund IDs
+    require(fundId < type(uint128).max, "Fund ID too large");
   }
   
   // Calculate portfolio total value in USD
@@ -98,13 +120,18 @@ contract SteleFund is ISteleFund, IToken {
     return totalValueUSD;
   }
 
-  // Calculate shares to mint based on USD value
+  // Calculate shares to mint based on USD value with improved precision
   function _calculateSharesToMint(uint256 fundId, address token, uint256 amount) private view returns (uint256) {
     uint256 totalShares = ISteleFundInfo(info).getTotalFundValue(fundId);
     
-    // First deposit: shares = USD value of deposit
+    // Get USD token decimals dynamically
+    uint256 usdDecimals = 10 ** uint256(IERC20Minimal(usdToken).decimals());
+    
+    // First deposit: shares = USD value of deposit * SHARE_DECIMALS for precision
     if (totalShares == 0) {
-      return PriceOracle.getTokenPriceUSD(uniswapV3Factory, token, amount, weth9, usdToken);
+      uint256 usdValue = PriceOracle.getTokenPriceUSD(uniswapV3Factory, token, amount, weth9, usdToken);
+      // Scale up to share decimals for precision
+      return usdValue * SHARE_DECIMALS / usdDecimals;
     }
     
     // Get deposit value in USD
@@ -114,34 +141,49 @@ contract SteleFund is ISteleFund, IToken {
     // Get current portfolio value in USD
     uint256 portfolioValueUSD = getPortfolioValueUSD(fundId);
     if (portfolioValueUSD == 0) {
-      return depositValueUSD; // Fallback to USD value
+      return depositValueUSD * SHARE_DECIMALS / usdDecimals; // Scale up for precision
     }
     
-    // Calculate shares: (depositValue / portfolioValue) * existingShares
-    return PriceOracle.precisionMul(depositValueUSD, totalShares, portfolioValueUSD);
+    // Use mulDiv for maximum precision: (depositValue * existingShares) / portfolioValue
+    // This avoids intermediate overflow and maintains precision
+    uint256 shares = (depositValueUSD * totalShares) / portfolioValueUSD;
+    
+    // Round up to favor the protocol (prevent rounding attacks)
+    if ((depositValueUSD * totalShares) % portfolioValueUSD > 0) {
+      shares += 1;
+    }
+    
+    return shares;
   }
 
   fallback() external payable { 
     uint256 amount = msg.value;
-    uint256 length = msg.data.length;
-    (bytes32 byteData) = decode(msg.data);
-
-    uint256 converted = 0;
-    for (uint256 i=0; i<length; i++) {
-      converted += uint8(byteData[i]) * (256 ** (length-i-1));
-    }
-    uint256 fundId = converted;
-
+    
+    // Safe fund ID parsing with validation
+    uint256 fundId = parseFundId(msg.data);
+    
+    // Verify fund exists and user is joined
+    require(fundId > 0 && fundId <= ISteleFundInfo(info).fundIdCount(), "Invalid fund ID");
     bool isJoined = ISteleFundInfo(info).isJoined(msg.sender, fundId);
     require(isJoined, "US");
-    IWETH9(weth9).deposit{value: amount}();
+    
+    // Check minimum USD deposit amount
+    uint256 depositUSD = PriceOracle.getTokenPriceUSD(uniswapV3Factory, weth9, amount, weth9, usdToken);
+    uint256 usdDecimals = 10 ** uint256(IERC20Minimal(usdToken).decimals());
+    uint256 minDepositRequired = MIN_DEPOSIT_USD * usdDecimals;
+    require(depositUSD >= minDepositRequired, "MDA"); // Minimum $10 deposit
     
     // Calculate shares based on USD value
     uint256 sharesToMint = _calculateSharesToMint(fundId, weth9, amount);
+    require(sharesToMint > 0, "ZS"); // Zero shares
     
+    // Update state FIRST (before external calls)
     ISteleFundInfo(info).increaseFundToken(fundId, weth9, amount);
     ISteleFundInfo(info).increaseInvestorShare(fundId, msg.sender, sharesToMint);
     emit Deposit(fundId, msg.sender, weth9, amount);
+    
+    // External call LAST
+    IWETH9(weth9).deposit{value: amount}();
   }
 
   receive() external payable {
@@ -157,15 +199,24 @@ contract SteleFund is ISteleFund, IToken {
     bool isInvestable = ISteleFundSetting(setting).isInvestable(token);
     require(isJoined, "US");
     require(isInvestable, "NWT");
-
-    IERC20Minimal(token).transferFrom(msg.sender, address(this), amount);
+    
+    // Check minimum USD deposit amount
+    uint256 depositUSD = PriceOracle.getTokenPriceUSD(uniswapV3Factory, token, amount, weth9, usdToken);
+    uint256 usdDecimals = 10 ** uint256(IERC20Minimal(usdToken).decimals());
+    uint256 minDepositRequired = MIN_DEPOSIT_USD * usdDecimals;
+    require(depositUSD >= minDepositRequired, "MDA"); // Minimum $10 deposit
     
     // Calculate shares based on USD value
     uint256 sharesToMint = _calculateSharesToMint(fundId, token, amount);
+    require(sharesToMint > 0, "ZS"); // Zero shares
     
+    // Update state FIRST (before external calls)
     ISteleFundInfo(info).increaseFundToken(fundId, token, amount);
     ISteleFundInfo(info).increaseInvestorShare(fundId, msg.sender, sharesToMint);
     emit Deposit(fundId, msg.sender, token, amount);
+    
+    // External call LAST
+    IERC20Minimal(token).transferFrom(msg.sender, address(this), amount);
   }
 
   function withdraw(uint256 fundId, uint256 percentage) external payable override {
@@ -201,6 +252,9 @@ contract SteleFund is ISteleFund, IToken {
     uint256 totalValue = ISteleFundInfo(info).getTotalFundValue(fundId);
     require(totalValue > 0, "ZTV"); // Zero total value
     
+    // Update state FIRST (before external calls)
+    ISteleFundInfo(info).decreaseInvestorShare(fundId, msg.sender, shareToWithdraw);
+    
     for (uint256 i = 0; i < fundTokens.length; i++) {
       if (fundTokens[i].amount > 0) {
         // Use higher precision calculation to minimize rounding errors
@@ -217,6 +271,11 @@ contract SteleFund is ISteleFund, IToken {
         if (tokenShare > 0) {
           address token = fundTokens[i].token;
           
+          // Update state FIRST (before external calls)
+          ISteleFundInfo(info).decreaseFundToken(fundId, token, tokenShare);
+          emit Withdraw(fundId, msg.sender, token, tokenShare, 0);
+          
+          // External calls LAST
           if (token == weth9) {
             IWETH9(weth9).withdraw(tokenShare);
             (bool success, ) = payable(msg.sender).call{value: tokenShare}("");
@@ -224,14 +283,9 @@ contract SteleFund is ISteleFund, IToken {
           } else {
             IERC20Minimal(token).transfer(msg.sender, tokenShare);
           }
-          
-          ISteleFundInfo(info).decreaseFundToken(fundId, token, tokenShare);
-          emit Withdraw(fundId, msg.sender, token, tokenShare, 0);
         }
       }
     }
-    
-    ISteleFundInfo(info).decreaseInvestorShare(fundId, msg.sender, shareToWithdraw);
   }
   
   function _withdrawInvestor(uint256 fundId, uint256 shareToWithdraw, uint256 /* percentage */) private {
@@ -239,6 +293,9 @@ contract SteleFund is ISteleFund, IToken {
     uint256 totalValue = ISteleFundInfo(info).getTotalFundValue(fundId);
     require(totalValue > 0, "ZTV"); // Zero total value
     uint256 managerFee = ISteleFundSetting(setting).managerFee();
+    
+    // Update investor share FIRST (before external calls)
+    ISteleFundInfo(info).decreaseInvestorShare(fundId, msg.sender, shareToWithdraw);
     
     for (uint256 i = 0; i < fundTokens.length; i++) {
       if (fundTokens[i].amount > 0) {
@@ -253,9 +310,15 @@ contract SteleFund is ISteleFund, IToken {
         if (tokenShare > 0) {
           address token = fundTokens[i].token;
           
-          // Calculate fee more precisely using high precision calculation
-          // managerFee is in basis points, so we need to divide by 1000000 (10000 * 100)
-          uint256 feeAmount = PriceOracle.precisionMul(tokenShare, managerFee, 1000000);
+          // Calculate fee with improved precision
+          // managerFee is in basis points (e.g., 10000 = 1%)
+          // Use mulDiv pattern: (tokenShare * managerFee) / (BASIS_POINTS * 100)
+          uint256 feeAmount = (tokenShare * managerFee) / (BASIS_POINTS * 100);
+          
+          // Round up fees to prevent dust attacks
+          if ((tokenShare * managerFee) % (BASIS_POINTS * 100) > 0) {
+            feeAmount += 1;
+          }
           
           // Ensure fee doesn't exceed token share
           if (feeAmount > tokenShare) {
@@ -264,17 +327,7 @@ contract SteleFund is ISteleFund, IToken {
           
           uint256 withdrawAmount = tokenShare - feeAmount;
           
-          if (withdrawAmount > 0) {
-            if (token == weth9) {
-              IWETH9(weth9).withdraw(withdrawAmount);
-              (bool success, ) = payable(msg.sender).call{value: withdrawAmount}("");
-              require(success, "FW");
-            } else {
-              IERC20Minimal(token).transfer(msg.sender, withdrawAmount);
-            }
-          }
-          
-          // Update fund and fee tokens with actual amounts
+          // Update fund and fee tokens FIRST (before external calls)
           if (withdrawAmount > 0) {
             ISteleFundInfo(info).decreaseFundToken(fundId, token, withdrawAmount);
           }
@@ -284,11 +337,20 @@ contract SteleFund is ISteleFund, IToken {
           }
           
           emit Withdraw(fundId, msg.sender, token, withdrawAmount, feeAmount);
+          
+          // External calls LAST
+          if (withdrawAmount > 0) {
+            if (token == weth9) {
+              IWETH9(weth9).withdraw(withdrawAmount);
+              (bool success, ) = payable(msg.sender).call{value: withdrawAmount}("");
+              require(success, "FW");
+            } else {
+              IERC20Minimal(token).transfer(msg.sender, withdrawAmount);
+            }
+          }
         }
       }
     }
-    
-    ISteleFundInfo(info).decreaseInvestorShare(fundId, msg.sender, shareToWithdraw);
   }
 
   function handleSwap(
@@ -303,16 +365,68 @@ contract SteleFund is ISteleFund, IToken {
     emit Swap(fundId, swapFrom, swapTo, swapFromAmount, swapToAmount);
   }
 
-  // Uniswap V3 Swap Implementation
+  // Uniswap V3 Swap Implementation with slippage protection
   function executeV3Swap(uint256 fundId, SwapParams calldata trade) private {
     require(ISteleFundSetting(setting).isInvestable(trade.tokenOut), "NWT");
-    uint256 tokenBalance = ISteleFundInfo(info).getFundTokenAmount(fundId, trade.tokenIn);
-    require(trade.amountIn <= tokenBalance, "NET");
+    require(trade.amountIn <= ISteleFundInfo(info).getFundTokenAmount(fundId, trade.tokenIn), "NET");
+    
+    // Validate slippage and check asset limits
+    _validateSwapParameters(fundId, trade);
+    
+    // Calculate effective minimum output
+    uint256 effectiveMinOutput = _calculateEffectiveMinOutput(trade);
+    
+    // Update state FIRST - decrease the token we're swapping from
+    ISteleFundInfo(info).decreaseFundToken(fundId, trade.tokenIn, trade.amountIn);
 
-    // Approve V3 router for testing
+    // Execute the swap
+    uint256 amountOut = _executeSwapCall(trade, effectiveMinOutput);
+    
+    // Validate output and update state
+    require(amountOut >= effectiveMinOutput, "Slippage exceeded");
+    ISteleFundInfo(info).increaseFundToken(fundId, trade.tokenOut, amountOut);
+    emit Swap(fundId, trade.tokenIn, trade.tokenOut, trade.amountIn, amountOut);
+  }
+  
+  // Helper function to validate swap parameters
+  function _validateSwapParameters(uint256 fundId, SwapParams calldata trade) private view {
+    uint256 slippage = trade.maxSlippage > 0 ? trade.maxSlippage : DEFAULT_SLIPPAGE;
+    require(slippage <= ISteleFundSetting(setting).maxSlippage(), "SL");
+    
+    // Check maxAssets limit for new tokens
+    if (ISteleFundInfo(info).getFundTokenAmount(fundId, trade.tokenOut) == 0) {
+      Token[] memory fundTokens = ISteleFundInfo(info).getFundTokens(fundId);
+      uint256 currentTokenTypes = 0;
+      for (uint256 i = 0; i < fundTokens.length; i++) {
+        if (fundTokens[i].amount > 0) {
+          currentTokenTypes++;
+        }
+      }
+      require(currentTokenTypes < ISteleFundSetting(setting).maxAssets(), "MAX");
+    }
+  }
+  
+  // Helper function to calculate effective minimum output
+  function _calculateEffectiveMinOutput(SwapParams calldata trade) private view returns (uint256) {
+    uint256 expectedOutput = PriceOracle.getBestQuote(
+      uniswapV3Factory,
+      trade.tokenIn,
+      trade.tokenOut,
+      uint128(trade.amountIn),
+      300
+    );
+    
+    uint256 slippage = trade.maxSlippage > 0 ? trade.maxSlippage : DEFAULT_SLIPPAGE;
+    uint256 minOutputWithSlippage = (expectedOutput * (BASIS_POINTS - slippage)) / BASIS_POINTS;
+    
+    return minOutputWithSlippage > trade.amountOutMinimum ? 
+      minOutputWithSlippage : trade.amountOutMinimum;
+  }
+  
+  // Helper function to execute swap call
+  function _executeSwapCall(SwapParams calldata trade, uint256 effectiveMinOutput) private returns (uint256) {
     IERC20Minimal(trade.tokenIn).approve(swapRouter, trade.amountIn);
-
-    // Use V3 exactInputSingle for swapping
+    
     bytes memory swapCall = abi.encodeWithSignature(
       "exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))",
       trade.tokenIn,
@@ -321,21 +435,15 @@ contract SteleFund is ISteleFund, IToken {
       address(this),
       block.timestamp + 300,
       trade.amountIn,
-      trade.amountOutMinimum,
+      effectiveMinOutput,
       0
     );
     
     uint256 balanceBefore = IERC20Minimal(trade.tokenOut).balanceOf(address(this));
-
     (bool success, ) = swapRouter.call(swapCall);
     require(success, "Swap failed");
     
-    uint256 balanceAfter = IERC20Minimal(trade.tokenOut).balanceOf(address(this));
-    uint256 amountOut = balanceAfter - balanceBefore;
-    
-    require(amountOut >= trade.amountOutMinimum, "Insufficient output amount");
-    
-    handleSwap(fundId, trade.tokenIn, trade.tokenOut, trade.amountIn, amountOut);
+    return IERC20Minimal(trade.tokenOut).balanceOf(address(this)) - balanceBefore;
   }
 
   function swap(uint256 fundId, SwapParams[] calldata trades) 
@@ -369,9 +477,14 @@ contract SteleFund is ISteleFund, IToken {
       amount = totalFeeAmount;
     }
     
+    // Update state FIRST (before external calls)
     bool isSuccess = ISteleFundInfo(info).decreaseFeeToken(fundId, token, amount);
     require(isSuccess, "FD");
     
+    ISteleFundInfo(info).decreaseFundToken(fundId, token, amount);
+    emit WithdrawFee(fundId, msg.sender, token, amount);
+    
+    // External calls LAST
     if (token == weth9) {
       IWETH9(weth9).withdraw(amount);
       (bool success, ) = payable(msg.sender).call{value: amount}("");
@@ -379,8 +492,5 @@ contract SteleFund is ISteleFund, IToken {
     } else {
       IERC20Minimal(token).transfer(msg.sender, amount);
     }
-    
-    ISteleFundInfo(info).decreaseFundToken(fundId, token, amount);
-    emit WithdrawFee(fundId, msg.sender, token, amount);
   }
 }
