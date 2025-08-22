@@ -12,7 +12,7 @@ interface IERC20Decimals {
 contract SteleFundSetting is ISteleFundSetting {
   address public override owner;
   address public override weth9;
-  address public override steleToken;
+  address public override usdc;
 
   uint256 public override managerFee = 10000; // 10000 : 1%, 3000 : 0.3%
   
@@ -23,12 +23,12 @@ contract SteleFundSetting is ISteleFundSetting {
     _;
   }
 
-  constructor(address _stele, address _weth9) {
+  constructor(address _weth9, address _usdc) {
     owner = msg.sender;
-    steleToken = _stele;
     weth9 = _weth9;
-    isInvestable[steleToken] = true;
+    usdc = _usdc;
     isInvestable[weth9] = true;
+    isInvestable[usdc] = true;
     emit SettingCreated();
   }
 
@@ -50,8 +50,7 @@ contract SteleFundSetting is ISteleFundSetting {
   }
 
   function resetToken(address _token) external override onlyOwner {
-    require(isInvestable[_token] == true, 'WLT');
-    require(_token != weth9 && _token != steleToken, 'WLT2');
+    require(_token != weth9 && isInvestable[_token] == true, 'WLT');
     isInvestable[_token] = false;
     emit RemoveToken(_token);
   }

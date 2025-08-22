@@ -8,7 +8,8 @@ interface ISteleFundInfo is IToken {
   event OwnerChanged(address owner, address newOwner);
   event Create(uint256 fundId, address indexed manager);
   event Join(uint256 fundId, address indexed investor);
-  
+  event UpdateShare(uint256 fundId, address indexed investor, uint256 share, uint256 totalShare);
+
   function owner() external view returns (address _owner);
   function manager(uint256 fundId) external view returns (address _manager);
   function managingFund(address _manager) external view returns (uint256 fundId);

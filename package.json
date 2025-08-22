@@ -38,7 +38,9 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.4.0"
+    "@openzeppelin/contracts": "^5.4.0",
+    "@uniswap/sdk-core": "^7.7.2",
+    "@uniswap/v4-sdk": "^1.21.4"
   },
   "engines": {
     "node": ">=16"

@@ -8,15 +8,18 @@ describe("ETH Price Test", function () {
   let owner: any;
 
   const WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
-  const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-  const STELE_TOKEN = "0x71c24377e7f24b6d822C9dad967eBC77C04667b5";
+  const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"; // Correct USDC address
+  
+  // Uniswap V4 addresses
+  const POOL_MANAGER = "0x000000000004444c5dc75cB358380D2e3dE08A90";
+  const UNIVERSAL_ROUTER = "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af";
 
   before(async function () {
     [owner] = await ethers.getSigners();
 
-    // Deploy contracts
+    // Deploy contracts with V4 support
     const SteleFundSetting = await ethers.getContractFactory("SteleFundSetting");
-    steleFundSetting = await SteleFundSetting.deploy(STELE_TOKEN, WETH_ADDRESS);
+    steleFundSetting = await SteleFundSetting.deploy(WETH_ADDRESS, USDC_ADDRESS);
     await steleFundSetting.waitForDeployment();
 
     const SteleFundInfo = await ethers.getContractFactory("SteleFundInfo");
@@ -28,7 +31,9 @@ describe("ETH Price Test", function () {
       WETH_ADDRESS,
       await steleFundSetting.getAddress(),
       await steleFundInfo.getAddress(),
-      USDC_ADDRESS
+      USDC_ADDRESS,
+      POOL_MANAGER,
+      UNIVERSAL_ROUTER
     );
     await steleFund.waitForDeployment();
 

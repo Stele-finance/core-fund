@@ -10,7 +10,7 @@ interface ISteleFundSetting {
 
   function owner() external view returns (address);
   function weth9() external view returns (address);
-  function steleToken() external view returns (address);
+  function usdc() external view returns (address);
   function managerFee() external view returns (uint256);
   function isInvestable(address _token) external view returns (bool);
 
