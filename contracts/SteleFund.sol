@@ -179,9 +179,9 @@ contract SteleFund is ISteleFund, IToken {
     
     // Update state FIRST (before external calls)
     ISteleFundInfo(info).increaseFundToken(fundId, weth9, amount);
-    ISteleFundInfo(info).increaseInvestorShare(fundId, msg.sender, sharesToMint);
-    emit Deposit(fundId, msg.sender, weth9, amount);
-    
+    (uint256 investorShare, uint256 fundShare) = ISteleFundInfo(info).increaseInvestorShare(fundId, msg.sender, sharesToMint);
+    emit Deposit(fundId, msg.sender, weth9, amount, investorShare, fundShare);
+
     // External call LAST
     IWETH9(weth9).deposit{value: amount}();
   }
@@ -212,9 +212,9 @@ contract SteleFund is ISteleFund, IToken {
     
     // Update state FIRST (before external calls)
     ISteleFundInfo(info).increaseFundToken(fundId, token, amount);
-    ISteleFundInfo(info).increaseInvestorShare(fundId, msg.sender, sharesToMint);
-    emit Deposit(fundId, msg.sender, token, amount);
-    
+    (uint256 investorShare, uint256 fundShare) = ISteleFundInfo(info).increaseInvestorShare(fundId, msg.sender, sharesToMint);
+    emit Deposit(fundId, msg.sender, token, amount, investorShare, fundShare);
+
     // External call LAST
     IERC20Minimal(token).transferFrom(msg.sender, address(this), amount);
   }
@@ -232,12 +232,6 @@ contract SteleFund is ISteleFund, IToken {
     // If shareToWithdraw is 0 due to rounding, just return - no need to complicate
     if (shareToWithdraw == 0) {
       return; // No withdrawal, save gas
-    }
-    
-    // For very small shares, recommend 100% withdrawal to avoid dust
-    if (shareToWithdraw < MIN_SHARE_AMOUNT && percentage < 10000) {
-      // Allow small withdrawals but emit a warning event
-      // Users might want to consider 100% withdrawal instead
     }
     
     if (msg.sender == ISteleFundInfo(info).manager(fundId)) {
@@ -265,9 +259,6 @@ contract SteleFund is ISteleFund, IToken {
         if (tokenShare > fundTokens[i].amount) {
           tokenShare = fundTokens[i].amount;
         }
-        
-        // If tokenShare is 0 due to rounding, skip this token
-        // Very small amounts can be considered dust and ignored
         
         if (tokenShare > 0) {
           address token = fundTokens[i].token;
