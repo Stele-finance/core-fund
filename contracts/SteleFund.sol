@@ -253,8 +253,9 @@ contract SteleFund is ISteleFund, IToken {
     require(totalValue > 0, "ZTV"); // Zero total value
     
     // Update state FIRST (before external calls)
-    ISteleFundInfo(info).decreaseInvestorShare(fundId, msg.sender, shareToWithdraw);
-    
+    (uint256 investorShare, uint256 fundShare) = ISteleFundInfo(info).decreaseInvestorShare(fundId, msg.sender, shareToWithdraw);
+    emit Withdraw(fundId, msg.sender, investorShare, fundShare);
+
     for (uint256 i = 0; i < fundTokens.length; i++) {
       if (fundTokens[i].amount > 0) {
         // Use higher precision calculation to minimize rounding errors
@@ -285,8 +286,6 @@ contract SteleFund is ISteleFund, IToken {
         }
       }
     }
-    
-    emit Withdraw(fundId, msg.sender);
   }
   
   function _withdrawInvestor(uint256 fundId, uint256 shareToWithdraw, uint256 /* percentage */) private {
@@ -296,8 +295,9 @@ contract SteleFund is ISteleFund, IToken {
     uint256 managerFee = ISteleFundSetting(setting).managerFee();
     
     // Update investor share FIRST (before external calls)
-    ISteleFundInfo(info).decreaseInvestorShare(fundId, msg.sender, shareToWithdraw);
-    
+    (uint256 investorShare, uint256 fundShare) = ISteleFundInfo(info).decreaseInvestorShare(fundId, msg.sender, shareToWithdraw);
+    emit Withdraw(fundId, msg.sender, investorShare, fundShare);
+
     for (uint256 i = 0; i < fundTokens.length; i++) {
       if (fundTokens[i].amount > 0) {
         // Calculate token share with bounds checking using high precision
@@ -334,6 +334,7 @@ contract SteleFund is ISteleFund, IToken {
           }
           if (feeAmount > 0) {
             ISteleFundInfo(info).increaseFeeToken(fundId, token, feeAmount);
+            emit DepositFee(fundId, msg.sender, token, feeAmount);
           }
           
           // External calls LAST
@@ -348,21 +349,19 @@ contract SteleFund is ISteleFund, IToken {
           }
         }
       }
-    }
-    
-    emit Withdraw(fundId, msg.sender);
+    }    
   }
 
   function handleSwap(
     uint256 fundId,
-    address swapFrom, 
-    address swapTo, 
-    uint256 swapFromAmount, 
-    uint256 swapToAmount
+    address tokenIn,
+    address tokenOut,
+    uint256 tokenInAmount,
+    uint256 tokenOutAmount
   ) private {
-    ISteleFundInfo(info).decreaseFundToken(fundId, swapFrom, swapFromAmount);
-    ISteleFundInfo(info).increaseFundToken(fundId, swapTo, swapToAmount);
-    emit Swap(fundId, swapFrom, swapTo, swapFromAmount, swapToAmount);
+    ISteleFundInfo(info).decreaseFundToken(fundId, tokenIn, tokenInAmount);
+    ISteleFundInfo(info).increaseFundToken(fundId, tokenOut, tokenOutAmount);
+    emit Swap(fundId, tokenIn, tokenOut, tokenInAmount, tokenOutAmount);
   }
 
   // Uniswap V3 Swap Implementation with slippage protection
@@ -480,6 +479,7 @@ contract SteleFund is ISteleFund, IToken {
     // Update state FIRST (before external calls)
     bool isSuccess = ISteleFundInfo(info).decreaseFeeToken(fundId, token, amount);
     require(isSuccess, "FD");
+    emit WithdrawFee(fundId, msg.sender, token, amount);
     
     ISteleFundInfo(info).decreaseFundToken(fundId, token, amount);
     

@@ -120,14 +120,6 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     emit Join(fundId, msg.sender);
   }
 
-  function increaseFundToken(uint256 fundId, address token, uint256 amount) external override onlyOwner {
-    increaseToken(fundTokens[fundId], token, amount);
-  }
-
-  function decreaseFundToken(uint256 fundId, address token, uint256 amount) external override onlyOwner returns (bool) {
-    return decreaseToken(fundTokens[fundId], token, amount);
-  }
-
   function increaseInvestorShare(uint256 fundId, address investor, uint256 amount) external override onlyOwner {
     investorShares[fundId][investor] += amount;
     totalFundShares[fundId] += amount;
@@ -136,7 +128,7 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     emit Deposit(fundId, investor, investorShare, fundShare);
   }
 
-  function decreaseInvestorShare(uint256 fundId, address investor, uint256 amount) external override onlyOwner returns (bool) {
+  function decreaseInvestorShare(uint256 fundId, address investor, uint256 amount) external override onlyOwner returns (uint256, uint256) {
     require(investorShares[fundId][investor] >= amount, "IS");
     require(totalFundShares[fundId] >= amount, "ITS");
     
@@ -144,17 +136,22 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     totalFundShares[fundId] -= amount;
     uint256 investorShare = investorShares[fundId][investor];
     uint256 fundShare = totalFundShares[fundId];
-    emit Withdraw(fundId, investor, investorShare, fundShare);
-    return true;
+    return (investorShare, fundShare);
+  }
+
+  function increaseFundToken(uint256 fundId, address token, uint256 amount) external override onlyOwner {
+    increaseToken(fundTokens[fundId], token, amount);
+  }
+
+  function decreaseFundToken(uint256 fundId, address token, uint256 amount) external override onlyOwner returns (bool) {
+    return decreaseToken(fundTokens[fundId], token, amount);
   }
 
   function increaseFeeToken(uint256 fundId, address token, uint256 amount) external override onlyOwner {
-    emit DepositFee(fundId, msg.sender, token, amount);
     increaseToken(feeTokens[fundId], token, amount);
   }
 
   function decreaseFeeToken(uint256 fundId, address token, uint256 amount) external override onlyOwner returns (bool) {
-    emit WithdrawFee(fundId, msg.sender, token, amount);
     return decreaseToken(feeTokens[fundId], token, amount);
   }
 }
