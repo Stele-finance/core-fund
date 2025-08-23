@@ -133,7 +133,7 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     totalFundShares[fundId] += amount;
     uint256 investorShare = investorShares[fundId][investor];
     uint256 fundShare = totalFundShares[fundId];
-    emit UpdateShare(fundId, investor, investorShare, fundShare);
+    emit Deposit(fundId, investor, investorShare, fundShare);
   }
 
   function decreaseInvestorShare(uint256 fundId, address investor, uint256 amount) external override onlyOwner returns (bool) {
@@ -144,7 +144,7 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     totalFundShares[fundId] -= amount;
     uint256 investorShare = investorShares[fundId][investor];
     uint256 fundShare = totalFundShares[fundId];
-    emit UpdateShare(fundId, investor, investorShare, fundShare);
+    emit Withdraw(fundId, investor, investorShare, fundShare);
     return true;
   }
 
