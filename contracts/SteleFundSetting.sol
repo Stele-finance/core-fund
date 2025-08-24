@@ -2,7 +2,6 @@
 pragma solidity ^0.8.28;
 
 import './interfaces/ISteleFundSetting.sol';
-import './libraries/FullMath.sol';
 
 interface IERC20Decimals {
   function decimals() external view returns (uint8);
@@ -15,7 +14,7 @@ contract SteleFundSetting is ISteleFundSetting {
   address public override usdc;
 
   uint256 public override managerFee = 10000; // 10000 : 1%, 3000 : 0.3%
-  uint256 public override maxAssets = 20; // Maximum number of different tokens in portfolio
+  uint256 public override maxTokens = 20; // Maximum number of different tokens in portfolio
   uint256 public override maxSlippage = 300; // Maximum 3% slippage allowed (300 = 3%)
   
   mapping(address => bool) public override isInvestable;
@@ -45,10 +44,10 @@ contract SteleFundSetting is ISteleFundSetting {
     emit ManagerFeeChanged(_managerFee);
   }
 
-  function setMaxAssets(uint256 _maxAssets) external override onlyOwner {
-    require(_maxAssets > 0, 'Invalid max assets');
-    maxAssets = _maxAssets;
-    emit MaxAssetsChanged(_maxAssets);
+  function setMaxTokens(uint256 _maxTokens) external override onlyOwner {
+    require(_maxTokens > 0, 'Invalid max tokens');
+    maxTokens = _maxTokens;
+    emit MaxTokensChanged(_maxTokens);
   }
 
   function setMaxSlippage(uint256 _maxSlippage) external override onlyOwner {

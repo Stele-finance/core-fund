@@ -7,7 +7,6 @@ import './interfaces/ISteleFundInfo.sol';
 contract SteleFundInfo is Token, ISteleFundInfo {
   address public override owner;
   mapping(uint256 => address) public override manager;                    // manager[fundId]
-  mapping(uint256 => uint256) public investorCount;                       // investorCount[fundId]
   uint256 public override fundIdCount = 0;
 
   // fundId
@@ -116,7 +115,6 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     uint256 fundCount = investingFundCount[msg.sender];
     investingFunds[msg.sender][fundCount] = fundId;
     investingFundCount[msg.sender] += 1;
-    investorCount[fundId] += 1;
     emit Join(fundId, msg.sender);
   }
 

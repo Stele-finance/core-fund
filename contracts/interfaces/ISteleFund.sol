@@ -8,22 +8,12 @@ interface ISteleFund {
   event DepositFee(uint256 fundId, address indexed investor, address token, uint256 amount);
   event WithdrawFee(uint256 fundId, address indexed manager, address token, uint256 amount);
 
-  enum SwapType {
-    EXACT_INPUT_SINGLE_HOP,
-    EXACT_INPUT_MULTI_HOP
-  }
-
   struct SwapParams {
-    SwapType swapType;
     address tokenIn;
     address tokenOut;
     uint24 fee;
     uint256 amountIn;
-    uint256 amountOut;
-    uint256 amountInMaximum;
     uint256 amountOutMinimum;
-    uint160 sqrtPriceLimitX96;
-    bytes path;
     uint256 maxSlippage; // Maximum allowed slippage in basis points (e.g., 500 = 5%)
   }
 

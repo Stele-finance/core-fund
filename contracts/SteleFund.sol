@@ -5,7 +5,6 @@ pragma solidity ^0.8.28;
 import "./interfaces/ISteleFund.sol";
 import "./interfaces/ISteleFundInfo.sol";
 import "./interfaces/ISteleFundSetting.sol";
-import "./libraries/Path.sol";
 import "./interfaces/IToken.sol";
 import "./libraries/PriceOracle.sol";
 
@@ -343,24 +342,12 @@ contract SteleFund is ISteleFund, IToken {
     }    
   }
 
-  function handleSwap(
-    uint256 fundId,
-    address tokenIn,
-    address tokenOut,
-    uint256 tokenInAmount,
-    uint256 tokenOutAmount
-  ) private {
-    ISteleFundInfo(info).decreaseFundToken(fundId, tokenIn, tokenInAmount);
-    ISteleFundInfo(info).increaseFundToken(fundId, tokenOut, tokenOutAmount);
-    emit Swap(fundId, tokenIn, tokenOut, tokenInAmount, tokenOutAmount);
-  }
-
   // Uniswap V3 Swap Implementation with slippage protection
   function executeV3Swap(uint256 fundId, SwapParams calldata trade) private {
     require(ISteleFundSetting(setting).isInvestable(trade.tokenOut), "NWT");
     require(trade.amountIn <= ISteleFundInfo(info).getFundTokenAmount(fundId, trade.tokenIn), "NET");
     
-    // Validate slippage and check asset limits
+    // Validate slippage and check token limits
     _validateSwapParameters(fundId, trade);
     
     // Calculate effective minimum output
@@ -383,7 +370,7 @@ contract SteleFund is ISteleFund, IToken {
     uint256 slippage = trade.maxSlippage > 0 ? trade.maxSlippage : DEFAULT_SLIPPAGE;
     require(slippage <= ISteleFundSetting(setting).maxSlippage(), "SL");
     
-    // Check maxAssets limit for new tokens
+    // Check maxTokens limit for new tokens
     if (ISteleFundInfo(info).getFundTokenAmount(fundId, trade.tokenOut) == 0) {
       Token[] memory fundTokens = ISteleFundInfo(info).getFundTokens(fundId);
       uint256 currentTokenTypes = 0;
@@ -392,7 +379,7 @@ contract SteleFund is ISteleFund, IToken {
           currentTokenTypes++;
         }
       }
-      require(currentTokenTypes < ISteleFundSetting(setting).maxAssets(), "MAX");
+      require(currentTokenTypes < ISteleFundSetting(setting).maxTokens(), "MAX");
     }
   }
   
