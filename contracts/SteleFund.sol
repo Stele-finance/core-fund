@@ -58,8 +58,6 @@ contract SteleFund is ISteleFund, IToken {
   uint256 private constant MIN_SHARE_AMOUNT = 1000; // Minimum 1000 wei share
   uint256 private constant MIN_DEPOSIT_USD = 10; // Minimum $10 deposit
   
-  // Default slippage constant (can be overridden by settings)
-  uint256 private constant DEFAULT_SLIPPAGE = 300; // Default 3% slippage if not set
   
   address public weth9;
   address public setting;
@@ -367,9 +365,6 @@ contract SteleFund is ISteleFund, IToken {
   
   // Helper function to validate swap parameters
   function _validateSwapParameters(uint256 fundId, SwapParams calldata trade) private view {
-    uint256 slippage = trade.maxSlippage > 0 ? trade.maxSlippage : DEFAULT_SLIPPAGE;
-    require(slippage <= ISteleFundSetting(setting).maxSlippage(), "SL");
-    
     // Check maxTokens limit for new tokens
     if (ISteleFundInfo(info).getFundTokenAmount(fundId, trade.tokenOut) == 0) {
       Token[] memory fundTokens = ISteleFundInfo(info).getFundTokens(fundId);
@@ -393,7 +388,7 @@ contract SteleFund is ISteleFund, IToken {
       300
     );
     
-    uint256 slippage = trade.maxSlippage > 0 ? trade.maxSlippage : DEFAULT_SLIPPAGE;
+    uint256 slippage = ISteleFundSetting(setting).maxSlippage();
     uint256 minOutputWithSlippage = (expectedOutput * (BASIS_POINTS - slippage)) / BASIS_POINTS;
     
     return minOutputWithSlippage > trade.amountOutMinimum ? 

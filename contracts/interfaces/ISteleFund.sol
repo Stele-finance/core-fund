@@ -14,7 +14,6 @@ interface ISteleFund {
     uint24 fee;
     uint256 amountIn;
     uint256 amountOutMinimum;
-    uint256 maxSlippage; // Maximum allowed slippage in basis points (e.g., 500 = 5%)
   }
 
   function deposit(uint256 fundId, address token, uint256 amount) external;
