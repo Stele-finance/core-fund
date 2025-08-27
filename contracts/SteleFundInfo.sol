@@ -15,8 +15,8 @@ contract SteleFundInfo is Token, ISteleFundInfo {
   mapping(address => uint256) public investingFundCount;
 
   // Token
-  mapping(uint256 => Token[]) public fundTokens;                          // fundTokens[fundId]
-  mapping(uint256 => Token[]) public feeTokens;                           // feeTokens[fundId]
+  mapping(uint256 => IToken.Token[]) public fundTokens;                          // fundTokens[fundId]
+  mapping(uint256 => IToken.Token[]) public feeTokens;                           // feeTokens[fundId]
   
   // Investor Shares
   mapping(uint256 => mapping(address => uint256)) public investorShares;  // investorShares[fundId][investor]
@@ -38,7 +38,7 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     emit OwnerChanged(oldOwner, newOwner);
   }
 
-  function getFundTokens(uint256 fundId) external override view returns (Token[] memory) {
+  function getFundTokens(uint256 fundId) external override view returns (IToken.Token[] memory) {
     return fundTokens[fundId];
   }
 
@@ -50,12 +50,12 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     return totalFundShares[fundId];
   }
 
-  function getFeeTokens(uint256 fundId) external override view returns (Token[] memory) {
+  function getFeeTokens(uint256 fundId) external override view returns (IToken.Token[] memory) {
     return feeTokens[fundId];
   }
 
   function getFundTokenAmount(uint256 fundId, address token) public override view returns (uint256) {
-    Token[] memory tokens = fundTokens[fundId];
+    IToken.Token[] memory tokens = fundTokens[fundId];
     for (uint256 i=0; i<tokens.length; i++) {
       if (tokens[i].token == token) {
         return tokens[i].amount;
@@ -71,7 +71,7 @@ contract SteleFundInfo is Token, ISteleFundInfo {
   }
 
   function getFeeTokenAmount(uint256 fundId, address token) public override view returns (uint256) {
-    Token[] memory tokens = feeTokens[fundId];
+    IToken.Token[] memory tokens = feeTokens[fundId];
     for (uint256 i=0; i<tokens.length; i++) {
       if (tokens[i].token == token) {
         return tokens[i].amount;

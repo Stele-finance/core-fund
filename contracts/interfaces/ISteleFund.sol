@@ -16,7 +16,6 @@ interface ISteleFund {
     uint256 amountOutMinimum;
   }
 
-  function deposit(uint256 fundId, address token, uint256 amount) external;
   function withdraw(uint256 fundId, uint256 percentage) external payable;
   function swap(uint256 fundId, SwapParams[] calldata trades) external;
   function withdrawFee(uint256 fundId, address token, uint256 percentage) external payable;
