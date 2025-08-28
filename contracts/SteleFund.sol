@@ -181,7 +181,7 @@ contract SteleFund is ISteleFund {
     uint256 totalFundShares = ISteleFundInfo(info).getTotalFundValue(fundId);
     require(totalFundShares > 0, "ZTV"); // Zero total value
     
-    uint256 shareToWithdraw = (investorShareBefore * percentage) / 10000;
+    uint256 shareToWithdraw = PriceOracle.mulDiv(investorShareBefore, percentage, 10000);
     
     // If shareToWithdraw is 0 due to rounding, just return - no need to complicate
     if (shareToWithdraw == 0) {
@@ -232,7 +232,7 @@ contract SteleFund is ISteleFund {
     require(totalFundShares > 0, "ZTV"); // Zero total value
     uint256 managerFee = ISteleFundSetting(setting).managerFee();
     
-    uint256 shareToWithdraw = (investorShareBefore * percentage) / 10000;
+    uint256 shareToWithdraw = PriceOracle.mulDiv(investorShareBefore, percentage, 10000);
     
     // If shareToWithdraw is 0 due to rounding, just return - no need to complicate
     if (shareToWithdraw == 0) {
@@ -346,10 +346,11 @@ contract SteleFund is ISteleFund {
     );
     
     uint256 slippage = ISteleFundSetting(setting).maxSlippage();
-    uint256 minOutputWithSlippage = (expectedOutput * (BASIS_POINTS - slippage)) / BASIS_POINTS;
+    uint256 minOutputWithSlippage = PriceOracle.mulDiv(expectedOutput, BASIS_POINTS - slippage, BASIS_POINTS);
     
-    return minOutputWithSlippage > trade.amountOutMinimum ? 
-      minOutputWithSlippage : trade.amountOutMinimum;
+    require(trade.amountOutMinimum >= minOutputWithSlippage, "ESP"); // Excessive slippage protection
+    
+    return trade.amountOutMinimum;
   }
   
   // Helper function to execute swap call
