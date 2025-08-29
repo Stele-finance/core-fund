@@ -30,8 +30,8 @@ interface ISteleFundInfo is IToken {
 
   function increaseFundToken(uint256 fundId, address token, uint256 amount) external;
   function decreaseFundToken(uint256 fundId, address token, uint256 amount) external returns (bool);
-  function increaseInvestorShare(uint256 fundId, address investor, uint256 amount) external returns (uint256, uint256);
-  function decreaseInvestorShare(uint256 fundId, address investor, uint256 amount) external returns (uint256, uint256);
+  function increaseShare(uint256 fundId, address investor, uint256 amount) external returns (uint256, uint256);
+  function decreaseShare(uint256 fundId, address investor, uint256 amount) external returns (uint256, uint256);
   function increaseFeeToken(uint256 fundId, address token, uint256 amount) external;
   function decreaseFeeToken(uint256 fundId, address token, uint256 amount) external returns (bool);
 }

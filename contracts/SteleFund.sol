@@ -146,7 +146,7 @@ contract SteleFund is ISteleFund {
     
     // Update state FIRST (before external calls)
     ISteleFundInfo(info).increaseFundToken(fundId, weth9, amount);
-    (uint256 investorShare, uint256 fundShare) = ISteleFundInfo(info).increaseInvestorShare(fundId, msg.sender, sharesToMint);
+    (uint256 investorShare, uint256 fundShare) = ISteleFundInfo(info).increaseShare(fundId, msg.sender, sharesToMint);
     emit Deposit(fundId, msg.sender, weth9, amount, investorShare, fundShare);
 
     // External call LAST
@@ -189,7 +189,7 @@ contract SteleFund is ISteleFund {
     }
 
     // Update state FIRST (before external calls)
-    (uint256 investorShareAfter, uint256 fundShareAfter) = ISteleFundInfo(info).decreaseInvestorShare(fundId, msg.sender, shareToWithdraw);
+    (uint256 investorShareAfter, uint256 fundShareAfter) = ISteleFundInfo(info).decreaseShare(fundId, msg.sender, shareToWithdraw);
     emit Withdraw(fundId, msg.sender, percentage, investorShareAfter, fundShareAfter);
 
     for (uint256 i = 0; i < fundTokens.length; i++) {
@@ -240,7 +240,7 @@ contract SteleFund is ISteleFund {
     }
     
     // Update investor share FIRST (before external calls)
-    (uint256 investorShareAfter, uint256 fundShareAfter) = ISteleFundInfo(info).decreaseInvestorShare(fundId, msg.sender, shareToWithdraw);
+    (uint256 investorShareAfter, uint256 fundShareAfter) = ISteleFundInfo(info).decreaseShare(fundId, msg.sender, shareToWithdraw);
     emit Withdraw(fundId, msg.sender, percentage, investorShareAfter, fundShareAfter);
 
     for (uint256 i = 0; i < fundTokens.length; i++) {

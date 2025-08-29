@@ -118,7 +118,7 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     emit Join(fundId, msg.sender);
   }
 
-  function increaseInvestorShare(uint256 fundId, address investor, uint256 amount) external override onlyOwner returns (uint256, uint256) {
+  function increaseShare(uint256 fundId, address investor, uint256 amount) external override onlyOwner returns (uint256, uint256) {
     investorShares[fundId][investor] += amount;
     totalFundShares[fundId] += amount;
     uint256 investorShare = investorShares[fundId][investor];
@@ -126,7 +126,7 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     return (investorShare, fundShare);
   }
 
-  function decreaseInvestorShare(uint256 fundId, address investor, uint256 amount) external override onlyOwner returns (uint256, uint256) {
+  function decreaseShare(uint256 fundId, address investor, uint256 amount) external override onlyOwner returns (uint256, uint256) {
     require(investorShares[fundId][investor] >= amount, "IS");
     require(totalFundShares[fundId] >= amount, "ITS");
     
