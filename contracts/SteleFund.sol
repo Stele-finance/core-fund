@@ -190,7 +190,7 @@ contract SteleFund is ISteleFund {
 
     // Update state FIRST (before external calls)
     (uint256 investorShareAfter, uint256 fundShareAfter) = ISteleFundInfo(info).decreaseInvestorShare(fundId, msg.sender, shareToWithdraw);
-    emit Withdraw(fundId, msg.sender, investorShareAfter, fundShareAfter);
+    emit Withdraw(fundId, msg.sender, percentage, investorShareAfter, fundShareAfter);
 
     for (uint256 i = 0; i < fundTokens.length; i++) {
       if (fundTokens[i].amount > 0) {
@@ -241,7 +241,7 @@ contract SteleFund is ISteleFund {
     
     // Update investor share FIRST (before external calls)
     (uint256 investorShareAfter, uint256 fundShareAfter) = ISteleFundInfo(info).decreaseInvestorShare(fundId, msg.sender, shareToWithdraw);
-    emit Withdraw(fundId, msg.sender, investorShareAfter, fundShareAfter);
+    emit Withdraw(fundId, msg.sender, percentage, investorShareAfter, fundShareAfter);
 
     for (uint256 i = 0; i < fundTokens.length; i++) {
       if (fundTokens[i].amount > 0) {
