@@ -17,16 +17,14 @@ interface ISteleFundInfo is IToken {
   function setOwner(address newOwner) external;
   function create() external returns (uint256 fundId);
   function isJoined(address investor, uint256 fundId) external view returns (bool);
-  function getInvestingFunds(address investor) external view returns (uint256[] memory);
   function join(uint256 fundId) external;
 
   function getFundTokens(uint256 fundId) external view returns (Token[] memory);
   function getFeeTokens(uint256 fundId) external view returns (Token[] memory);
   function getFundTokenAmount(uint256 fundId, address token) external view returns (uint256);
   function getFeeTokenAmount(uint256 fundId, address token) external view returns (uint256);
+  function getFundShare(uint256 fundId) external view returns (uint256);
   function getInvestorShare(uint256 fundId, address investor) external view returns (uint256);
-  function getInvestorSharePercentage(uint256 fundId, address investor) external view returns (uint256);
-  function getTotalFundValue(uint256 fundId) external view returns (uint256);
 
   function increaseFundToken(uint256 fundId, address token, uint256 amount) external;
   function decreaseFundToken(uint256 fundId, address token, uint256 amount) external returns (bool);

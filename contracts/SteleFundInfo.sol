@@ -8,6 +8,9 @@ contract SteleFundInfo is Token, ISteleFundInfo {
   address public override owner;
   mapping(uint256 => address) public override manager;                    // manager[fundId]
   uint256 public override fundIdCount = 0;
+  
+  // Maximum funds per investor to prevent DoS attacks
+  uint256 public constant MAX_FUNDS_PER_INVESTOR = 100;
 
   // fundId
   mapping(address => uint256) public override managingFund;               // managingFund[manager]
@@ -15,12 +18,12 @@ contract SteleFundInfo is Token, ISteleFundInfo {
   mapping(address => uint256) public investingFundCount;
 
   // Token
-  mapping(uint256 => IToken.Token[]) public fundTokens;                          // fundTokens[fundId]
-  mapping(uint256 => IToken.Token[]) public feeTokens;                           // feeTokens[fundId]
-  
+  mapping(uint256 => IToken.Token[]) public fundTokens;                        // fundTokens[fundId]
+  mapping(uint256 => IToken.Token[]) public feeTokens;                         // feeTokens[fundId]
+
   // Investor Shares
   mapping(uint256 => mapping(address => uint256)) public investorShares;  // investorShares[fundId][investor]
-  mapping(uint256 => uint256) public totalFundShares;                     // totalFundShares[fundId]
+  mapping(uint256 => uint256) public fundShares;                     // fundShares[fundId]
 
   modifier onlyOwner() {
     require(msg.sender == owner, 'NO');
@@ -45,11 +48,11 @@ contract SteleFundInfo is Token, ISteleFundInfo {
   function getInvestorShare(uint256 fundId, address investor) external override view returns (uint256) {
     return investorShares[fundId][investor];
   }
-  
-  function getTotalFundValue(uint256 fundId) external override view returns (uint256) {
-    return totalFundShares[fundId];
-  }
 
+  function getFundShare(uint256 fundId) external override view returns (uint256) {
+    return fundShares[fundId];
+  }
+  
   function getFeeTokens(uint256 fundId) external override view returns (IToken.Token[] memory) {
     return feeTokens[fundId];
   }
@@ -64,12 +67,6 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     return 0;
   }
 
-  function getInvestorSharePercentage(uint256 fundId, address investor) public override view returns (uint256) {
-    uint256 totalShares = totalFundShares[fundId];
-    if (totalShares == 0) return 0;
-    return (investorShares[fundId][investor] * 10000) / totalShares; // Return in basis points (10000 = 100%)
-  }
-
   function getFeeTokenAmount(uint256 fundId, address token) public override view returns (uint256) {
     IToken.Token[] memory tokens = feeTokens[fundId];
     for (uint256 i=0; i<tokens.length; i++) {
@@ -79,21 +76,13 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     }
     return 0;
   }
-
-  function getInvestingFunds(address investor) external override view returns (uint256[] memory){
-    uint256 fundCount = investingFundCount[investor];
-    uint256[] memory fundIds = new uint256[](fundCount);
-    for (uint256 i=0; i<fundCount; i++) {
-      fundIds[i] = investingFunds[investor][i];
-    }
-    return fundIds;
-  }
   
   function create() external override returns (uint256 fundId) {
     require(managingFund[msg.sender] == 0, 'EXIST');
+    uint256 fundCount = investingFundCount[msg.sender];
+    require(fundCount < MAX_FUNDS_PER_INVESTOR, 'MFR'); // Max Funds Reached
     fundId = ++fundIdCount;
     managingFund[msg.sender] = fundId;
-    uint256 fundCount = investingFundCount[msg.sender];
     investingFunds[msg.sender][fundCount] = fundId;
     investingFundCount[msg.sender] += 1;
     manager[fundId] = msg.sender;
@@ -111,8 +100,11 @@ contract SteleFundInfo is Token, ISteleFundInfo {
   }
 
   function join(uint256 fundId) external override {
+    require(fundId > 0 && fundId <= fundIdCount, 'FNE'); // Fund Not Exists
+    require(manager[fundId] != address(0), 'NFM'); // No Fund Manager
     require(!isJoined(msg.sender, fundId), 'EXIST');
     uint256 fundCount = investingFundCount[msg.sender];
+    require(fundCount < MAX_FUNDS_PER_INVESTOR, 'MFR'); // Max Funds Reached
     investingFunds[msg.sender][fundCount] = fundId;
     investingFundCount[msg.sender] += 1;
     emit Join(fundId, msg.sender);
@@ -120,20 +112,20 @@ contract SteleFundInfo is Token, ISteleFundInfo {
 
   function increaseShare(uint256 fundId, address investor, uint256 amount) external override onlyOwner returns (uint256, uint256) {
     investorShares[fundId][investor] += amount;
-    totalFundShares[fundId] += amount;
+    fundShares[fundId] += amount;
     uint256 investorShare = investorShares[fundId][investor];
-    uint256 fundShare = totalFundShares[fundId];
+    uint256 fundShare = fundShares[fundId];
     return (investorShare, fundShare);
   }
 
   function decreaseShare(uint256 fundId, address investor, uint256 amount) external override onlyOwner returns (uint256, uint256) {
     require(investorShares[fundId][investor] >= amount, "IS");
-    require(totalFundShares[fundId] >= amount, "ITS");
-    
+    require(fundShares[fundId] >= amount, "ITS");
+
     investorShares[fundId][investor] -= amount;
-    totalFundShares[fundId] -= amount;
+    fundShares[fundId] -= amount;
     uint256 investorShare = investorShares[fundId][investor];
-    uint256 fundShare = totalFundShares[fundId];
+    uint256 fundShare = fundShares[fundId];
     return (investorShare, fundShare);
   }
 

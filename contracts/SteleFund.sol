@@ -6,6 +6,7 @@ import "./interfaces/ISteleFund.sol";
 import "./interfaces/ISteleFundInfo.sol";
 import "./interfaces/ISteleFundSetting.sol";
 import "./libraries/PriceOracle.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 interface IWETH9 {
   function deposit() external payable;
@@ -25,7 +26,7 @@ interface IERC20Minimal {
   function decimals() external view returns (uint8);
 }
 
-contract SteleFund is ISteleFund {
+contract SteleFund is ISteleFund, ReentrancyGuard {
   using PriceOracle for address;
   
   // Uniswap V3 Contract
@@ -40,6 +41,9 @@ contract SteleFund is ISteleFund {
   
   // Maximum fund ID to prevent abuse
   uint256 private constant MAX_FUND_ID = 1000000000; // Maximum 1 billion funds
+  
+  // Maximum swaps per transaction to prevent DoS
+  uint256 private constant MAX_SWAPS_PER_TX = 10;
 
   address public weth9;
   address public setting;
@@ -91,10 +95,10 @@ contract SteleFund is ISteleFund {
 
   // Calculate shares to mint based on USD value with improved precision
   function _calculateSharesToMint(uint256 fundId, address token, uint256 amount) private view returns (uint256) {
-    uint256 totalShares = ISteleFundInfo(info).getTotalFundValue(fundId);
-        
+    uint256 fundShare = ISteleFundInfo(info).getFundShare(fundId);
+
     // First deposit: shares = USD value of deposit
-    if (totalShares == 0) {
+    if (fundShare == 0) {
       uint256 usdValue = PriceOracle.getTokenPriceUSD(uniswapV3Factory, token, amount, weth9, usdToken);
       return usdValue;
     }
@@ -111,46 +115,56 @@ contract SteleFund is ISteleFund {
     
     // Use mulDiv for maximum precision: (depositValue * existingShares) / portfolioValue
     // This avoids intermediate overflow and maintains precision
-    uint256 shares = PriceOracle.mulDiv(depositValueUSD, totalShares, portfolioValueUSD);
-    
+    uint256 shares = PriceOracle.mulDiv(depositValueUSD, fundShare, portfolioValueUSD);
+
     // Round up to favor the protocol (prevent rounding attacks)
-    if ((depositValueUSD * totalShares) % portfolioValueUSD > 0) {
+    if ((depositValueUSD * fundShare) % portfolioValueUSD > 0) {
       shares += 1;
     }
     
     return shares;
   }
 
-  fallback() external payable { 
-    uint256 amount = msg.value;
-    
+  fallback() external payable nonReentrant { 
     // Safe fund ID parsing with validation
     uint256 fundId = parseFundId(msg.data);
     
     // Verify fund exists (fundId > 0 already checked in parseFundId)
     require(fundId <= ISteleFundInfo(info).fundIdCount(), "FNE");
-    bool isJoined = ISteleFundInfo(info).isJoined(msg.sender, fundId);
-    require(isJoined, "US");
+    require(ISteleFundInfo(info).isJoined(msg.sender, fundId), "US");
     
     // Check minimum USD deposit amount
-    uint256 depositUSD = PriceOracle.getTokenPriceUSD(uniswapV3Factory, weth9, amount, weth9, usdToken);
-    uint8 decimals = IERC20Minimal(usdToken).decimals();
-    require(decimals <= 18, "ID"); // Prevent overflow
-    uint256 usdDecimals = 10 ** uint256(decimals);
-    uint256 minDepositRequired = MIN_DEPOSIT_USD * usdDecimals;
-    require(depositUSD >= minDepositRequired, "MDA"); // Minimum $10 deposit
+    {
+      uint256 depositUSD = PriceOracle.getTokenPriceUSD(uniswapV3Factory, weth9, msg.value, weth9, usdToken);
+      uint8 decimals = IERC20Minimal(usdToken).decimals();
+      require(decimals <= 18, "ID"); // Prevent overflow
+      require(depositUSD >= MIN_DEPOSIT_USD * (10 ** uint256(decimals)), "MDA"); // Minimum $10 deposit
+    }
     
-    // Calculate shares based on USD value
-    uint256 sharesToMint = _calculateSharesToMint(fundId, weth9, amount);
+    // Calculate manager fee (only for investors, not manager)
+    uint256 managerFee = 0;
+    uint256 netDepositAmount = msg.value;
+    if (msg.sender != ISteleFundInfo(info).manager(fundId)) {
+      uint256 feeRate = ISteleFundSetting(setting).managerFee();
+      managerFee = PriceOracle.mulDiv(msg.value, feeRate, BASIS_POINTS);
+      netDepositAmount = msg.value - managerFee;
+    }
+    
+    // Calculate shares based on net deposit amount (after fee deduction)
+    uint256 sharesToMint = _calculateSharesToMint(fundId, weth9, netDepositAmount);
     require(sharesToMint > 0, "ZS"); // Zero shares
     
     // Update state FIRST (before external calls)
-    ISteleFundInfo(info).increaseFundToken(fundId, weth9, amount);
+    ISteleFundInfo(info).increaseFundToken(fundId, weth9, netDepositAmount); // Net amount to fund pool
+    if (managerFee > 0) {
+      ISteleFundInfo(info).increaseFeeToken(fundId, weth9, managerFee); // Fee amount to fee pool
+    }
     (uint256 investorShare, uint256 fundShare) = ISteleFundInfo(info).increaseShare(fundId, msg.sender, sharesToMint);
-    emit Deposit(fundId, msg.sender, weth9, amount, investorShare, fundShare);
+    
+    emit Deposit(fundId, msg.sender, weth9, msg.value, investorShare, fundShare, managerFee);
 
     // External call LAST
-    IWETH9(weth9).deposit{value: amount}();
+    IWETH9(weth9).deposit{value: msg.value}();
   }
 
   receive() external payable {
@@ -161,7 +175,7 @@ contract SteleFund is ISteleFund {
     }
   }
 
-  function withdraw(uint256 fundId, uint256 percentage) external payable override {
+  function withdraw(uint256 fundId, uint256 percentage) external payable override nonReentrant {
     bool isJoined = ISteleFundInfo(info).isJoined(msg.sender, fundId);
     require(isJoined, "US");
     require(percentage > 0 && percentage <= 10000, "IP"); // 0.01% to 100%
@@ -169,18 +183,14 @@ contract SteleFund is ISteleFund {
     uint256 investorShare = ISteleFundInfo(info).getInvestorShare(fundId, msg.sender);
     require(investorShare > 0, "NS");
     
-    if (msg.sender == ISteleFundInfo(info).manager(fundId)) {
-      _withdrawManager(fundId, investorShare, percentage);
-    } else {
-      _withdrawInvestor(fundId, investorShare, percentage);
-    }
+    _withdraw(fundId, investorShare, percentage);
   }
   
-  function _withdrawManager(uint256 fundId, uint256 investorShareBefore, uint256 percentage) private {
+  function _withdraw(uint256 fundId, uint256 investorShareBefore, uint256 percentage) private {
     IToken.Token[] memory fundTokens = ISteleFundInfo(info).getFundTokens(fundId);
-    uint256 totalFundShares = ISteleFundInfo(info).getTotalFundValue(fundId);
-    require(totalFundShares > 0, "ZTV"); // Zero total value
-    
+    uint256 fundShare = ISteleFundInfo(info).getFundShare(fundId);
+    require(fundShare > 0, "ZFS"); // Zero fund shares
+
     uint256 shareToWithdraw = PriceOracle.mulDiv(investorShareBefore, percentage, 10000);
     
     // If shareToWithdraw is 0 due to rounding, just return - no need to complicate
@@ -195,9 +205,9 @@ contract SteleFund is ISteleFund {
     for (uint256 i = 0; i < fundTokens.length; i++) {
       if (fundTokens[i].amount > 0) {
         // Calculate token amount with overflow protection using mulDiv
-        // Calculate token share directly: (amount * investorShareBefore * percentage) / (totalFundShares * 10000)
+        // Calculate token share directly: (amount * investorShareBefore * percentage) / (fundShare * 10000)
         uint256 tokenShare = PriceOracle.mulDiv(
-          PriceOracle.mulDiv(fundTokens[i].amount, investorShareBefore, totalFundShares),
+          PriceOracle.mulDiv(fundTokens[i].amount, investorShareBefore, fundShare),
           percentage,
           10000
         );
@@ -226,76 +236,6 @@ contract SteleFund is ISteleFund {
     }
   }
 
-  function _withdrawInvestor(uint256 fundId, uint256 investorShareBefore, uint256 percentage) private {
-    IToken.Token[] memory fundTokens = ISteleFundInfo(info).getFundTokens(fundId);
-    uint256 totalFundShares = ISteleFundInfo(info).getTotalFundValue(fundId);
-    require(totalFundShares > 0, "ZTV"); // Zero total value
-    uint256 managerFee = ISteleFundSetting(setting).managerFee();
-    
-    uint256 shareToWithdraw = PriceOracle.mulDiv(investorShareBefore, percentage, 10000);
-    
-    // If shareToWithdraw is 0 due to rounding, just return - no need to complicate
-    if (shareToWithdraw == 0) {
-      return; // No withdrawal, save gas
-    }
-    
-    // Update investor share FIRST (before external calls)
-    (uint256 investorShareAfter, uint256 fundShareAfter) = ISteleFundInfo(info).decreaseShare(fundId, msg.sender, shareToWithdraw);
-    emit Withdraw(fundId, msg.sender, percentage, investorShareAfter, fundShareAfter);
-
-    for (uint256 i = 0; i < fundTokens.length; i++) {
-      if (fundTokens[i].amount > 0) {
-        // Calculate token share directly: (amount * investorShareBefore * percentage) / (totalFundShares * 10000)
-        uint256 tokenShare = PriceOracle.mulDiv(
-          PriceOracle.mulDiv(fundTokens[i].amount, investorShareBefore, totalFundShares),
-          percentage,
-          10000
-        );
-        
-        // Ensure we don't withdraw more than available
-        if (tokenShare > fundTokens[i].amount) {
-          tokenShare = fundTokens[i].amount;
-        }
-        
-        if (tokenShare > 0) {
-          address token = fundTokens[i].token;
-          
-          // Calculate fee with improved precision and safety
-          // managerFee is in basis points (e.g., 10000 = 1%)
-          // mulDiv already handles rounding properly
-          uint256 feeAmount = managerFee > 0 ? 
-            PriceOracle.mulDiv(tokenShare, managerFee, BASIS_POINTS * 100) : 0;
-          
-          // Ensure fee doesn't exceed token share
-          if (feeAmount > tokenShare) {
-            feeAmount = tokenShare;
-          }
-          
-          uint256 withdrawAmount = tokenShare - feeAmount;
-          
-          // Update fund and fee tokens FIRST (before external calls)
-          if (withdrawAmount > 0) {
-            ISteleFundInfo(info).decreaseFundToken(fundId, token, withdrawAmount);
-          }
-          if (feeAmount > 0) {
-            ISteleFundInfo(info).increaseFeeToken(fundId, token, feeAmount);
-            emit DepositFee(fundId, msg.sender, token, feeAmount);
-          }
-          
-          // External calls LAST
-          if (withdrawAmount > 0) {
-            if (token == weth9) {
-              IWETH9(weth9).withdraw(withdrawAmount);
-              (bool success, ) = payable(msg.sender).call{value: withdrawAmount}("");
-              require(success, "FW");
-            } else {
-              IERC20Minimal(token).transfer(msg.sender, withdrawAmount);
-            }
-          }
-        }
-      }
-    }    
-  }
 
   // Uniswap V3 Swap Implementation with slippage protection
   function executeV3Swap(uint256 fundId, SwapParams calldata trade) private {
@@ -380,8 +320,9 @@ contract SteleFund is ISteleFund {
   }
 
   function swap(uint256 fundId, SwapParams[] calldata trades) 
-    external override onlyManager(msg.sender, fundId)
+    external override onlyManager(msg.sender, fundId) nonReentrant
   {
+    require(trades.length <= MAX_SWAPS_PER_TX, "TMS"); // Too Many Swaps
     for(uint256 i=0; i<trades.length; i++)
     {
       // Use Uniswap V3 SwapRouter for all swaps
@@ -390,7 +331,7 @@ contract SteleFund is ISteleFund {
   }
 
   function withdrawFee(uint256 fundId, address token, uint256 percentage) 
-    external payable override onlyManager(msg.sender, fundId)
+    external payable override onlyManager(msg.sender, fundId) nonReentrant
   {
     require(percentage > 0 && percentage <= 10000, "IP"); // 0.01% to 100%
     

@@ -13,7 +13,7 @@ contract SteleFundSetting is ISteleFundSetting {
   address public override weth9;
   address public override usdc;
 
-  uint256 public override managerFee = 10000; // 10000 : 1%, 3000 : 0.3%
+  uint256 public override managerFee = 100; // 100 : 1%
   uint256 public override maxTokens = 20; // Maximum number of different tokens in portfolio
   uint256 public override maxSlippage = 300; // Maximum 3% slippage allowed (300 = 3%)
   
