@@ -21,14 +21,13 @@ interface ISteleFundManagerNFT {
     uint256 fundCreated
   );
 
-  // Admin functions
-  function setFundInfo(address _fundInfo) external;
+  event TransferAttemptBlocked(uint256 indexed tokenId, address indexed from, address indexed to, string reason);
 
   // Main functions
   function mintManagerNFT(MintParams calldata params) external returns (uint256);
   
   // View functions
-  function getFundData(uint256 tokenId) external view returns (
+  function getTokenData(uint256 tokenId) external view returns (
     uint256 fundId,
     uint256 fundCreated,
     uint256 nftMintBlock,
@@ -36,6 +35,4 @@ interface ISteleFundManagerNFT {
     uint256 currentTVL,
     int256 returnRate
   );
-  
-  function getManagerNFTs(address manager) external view returns (uint256[] memory);
 }

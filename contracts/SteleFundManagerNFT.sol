@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Base64.sol";
 import "./libraries/NFTSVG.sol";
 import "./interfaces/ISteleFundInfo.sol";
+import "./interfaces/ISteleFundManagerNFT.sol";
 
 // NFT metadata structure for fund manager records
 struct FundManagerNFT {
@@ -18,30 +19,9 @@ struct FundManagerNFT {
   int256 returnRate;           // Return rate in basis points (10000 = 100%), can be negative
 }
 
-// Mint parameters structure
-struct MintParams {
-  uint256 fundId;
-  uint256 fundCreated;
-  uint256 investment;
-  uint256 currentTVL;
-}
-
-contract SteleFundManagerNFT is ERC721, ERC721Enumerable {
+contract SteleFundManagerNFT is ERC721, ERC721Enumerable, ISteleFundManagerNFT {
   using Strings for uint256;
   using NFTSVG for NFTSVG.SVGParams;
-
-  // Events
-  event ManagerNFTMinted(
-    uint256 indexed tokenId, 
-    uint256 indexed fundId, 
-    address indexed manager,
-    uint256 investment,
-    uint256 currentTVL,
-    int256 returnRate,
-    uint256 fundCreated
-  );
-  event BaseURIUpdated(string newBaseURI);
-  event TransferAttemptBlocked(uint256 indexed tokenId, address from, address to, string reason);
 
   // State variables
   ISteleFundInfo public steleFundInfo;
@@ -49,8 +29,8 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable {
   uint256 private _nextTokenId = 1;
   
   // NFT storage
-  mapping(uint256 => FundManagerNFT) public managerNFTs;
-  mapping(address => uint256[]) public userManagerNFTs;
+  mapping(address => uint256[]) public userTokens;         // user => owned token IDs
+  mapping(uint256 => FundManagerNFT) public tokenData;       // tokenId => NFT data
 
   constructor(address _steleFund, address _steleFundInfo) ERC721("Stele Fund Manager NFT", "SFMN") {
     require(_steleFundInfo != address(0), "ZA");
@@ -76,8 +56,6 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable {
     }
   }
 
-
-
   // Mint Manager NFT (only callable by fund manager)
   function mintManagerNFT(MintParams calldata params) external onlySteleFundContract returns (uint256) {
     address manager = steleFundInfo.manager(params.fundId);
@@ -93,7 +71,7 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable {
     _nextTokenId++;
         
     // Store NFT metadata
-    managerNFTs[tokenId] = FundManagerNFT({
+    tokenData[tokenId] = FundManagerNFT({
       fundId: params.fundId,
       fundCreated: params.fundCreated,
       nftMintBlock: block.number,
@@ -106,7 +84,7 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable {
     _mint(manager, tokenId);
     
     // Track manager's NFTs
-    userManagerNFTs[manager].push(tokenId);
+    userTokens[manager].push(tokenId);
     
     emit ManagerNFTMinted(
       tokenId, 
@@ -122,7 +100,7 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable {
   }
 
   // Get NFT metadata
-  function getFundData(uint256 tokenId) external view returns (
+  function getTokenData(uint256 tokenId) external view returns (
     uint256 fundId,
     uint256 fundCreated,
     uint256 nftMintBlock,
@@ -132,7 +110,7 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable {
   ) {
     require(_exists(tokenId), "TNE"); // Token Not Exists
 
-    FundManagerNFT memory nft = managerNFTs[tokenId];
+    FundManagerNFT memory nft = tokenData[tokenId];
     return (
       nft.fundId,
       nft.fundCreated,
@@ -143,9 +121,9 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable {
     );
   }
 
-  // Get all NFTs for a manager
-  function getManagerNFTs(address manager) external view returns (uint256[] memory) {
-    return userManagerNFTs[manager];
+  // Get all NFTs for a user
+  function getUserNFTs(address user) external view returns (uint256[] memory) {
+    return userTokens[user];
   }
 
   // ============ SOULBOUND NFT FUNCTIONS ============
@@ -210,7 +188,7 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable {
       return (false, 0, address(0), 0);
     }
     
-    FundManagerNFT memory nft = managerNFTs[tokenId];
+    FundManagerNFT memory nft = tokenData[tokenId];
     return (
       true,
       nft.fundId,
@@ -244,7 +222,7 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable {
   function tokenURI(uint256 tokenId) public view override returns (string memory) {
     require(_exists(tokenId), "TNE");
 
-    FundManagerNFT memory nft = managerNFTs[tokenId];
+    FundManagerNFT memory nft = tokenData[tokenId];
 
     // Generate SVG image
     NFTSVG.SVGParams memory svgParams = NFTSVG.SVGParams({
