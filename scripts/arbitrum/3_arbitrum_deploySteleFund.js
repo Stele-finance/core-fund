@@ -17,15 +17,7 @@ async function main() {
   console.log(`💰 WETH: ${wethTokenAddress}`);
   console.log(`🏛️ TimeLock: ${timeLockAddress}`);
 
-  // Step 1: Deploy PriceOracle library
-  console.log("📚 Step 1: Deploying PriceOracle library on Arbitrum...");
-  const PriceOracle = await ethers.getContractFactory("PriceOracle");
-  const priceOracle = await PriceOracle.deploy();
-  await priceOracle.deployed();
-  const priceOracleAddress = priceOracle.address;
-  console.log(`✅ PriceOracle library deployed at: ${priceOracleAddress}\n`);
-
-  // Step 2: Deploy SteleFundSetting
+  // Step 1: Deploy SteleFundSetting
   console.log("📝 Step 2: Deploying SteleFundSetting on Arbitrum...");
   const SteleFundSetting = await ethers.getContractFactory("SteleFundSetting");
   const steleFundSetting = await SteleFundSetting.deploy(
