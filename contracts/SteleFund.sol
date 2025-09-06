@@ -5,8 +5,9 @@ pragma solidity ^0.8.28;
 import "./interfaces/ISteleFund.sol";
 import "./interfaces/ISteleFundInfo.sol";
 import "./interfaces/ISteleFundSetting.sol";
+import "./interfaces/ISteleFundManagerNFT.sol";
 import "./libraries/PriceOracle.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 interface IWETH9 {
   function deposit() external payable;
@@ -26,9 +27,12 @@ interface IERC20Minimal {
   function decimals() external view returns (uint8);
 }
 
+
 contract SteleFund is ISteleFund, ReentrancyGuard {
   using PriceOracle for address;
-  
+
+  address public override owner;
+
   // Uniswap V3 Contract
   address public constant swapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
   address public constant uniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984; // For price oracle
@@ -49,6 +53,12 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
   address public setting;
   address public info;
   address public usdToken; // USDC address for price calculation
+  address public managerNFTContract; // SteleFundManagerNFT contract address
+
+  modifier onlyOwner() {
+      require(msg.sender == owner, 'NO');
+      _;
+  }
 
   modifier onlyManager(address sender, uint256 fundId) {
     require(fundId == ISteleFundInfo(info).managingFund(sender), "NM");
@@ -368,5 +378,35 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     } else {
       IERC20Minimal(token).transfer(msg.sender, amount);
     }
+  }
+
+  // Set Manager NFT Contract (only callable by info contract owner)
+  function setManagerNFTContract(address _managerNFTContract) external override onlyOwner {
+    require(_managerNFTContract != address(0), "NZ");
+    managerNFTContract = _managerNFTContract;
+    emit ManagerNFTContractSet(_managerNFTContract);
+  }
+
+  // Get Manager NFT Contract address
+  function getManagerNFTContract() external view override returns (address) {
+    return managerNFTContract;
+  }
+
+  // Mint Manager NFT (only callable by fund manager)
+  function mintManagerNFT(uint256 fundId) external override onlyManager(msg.sender, fundId) nonReentrant returns (uint256) {
+    require(managerNFTContract != address(0), "NNC"); // NFT Contract Not set
+    address manager = ISteleFundInfo(info).manager(fundId);
+    require(manager != address(0), "NM");
+
+    // Create mint parameters
+    MintParams memory params = MintParams({
+      fundId: fundId,
+      fundCreatedBlock: block.number, // Use current block as creation time
+      investment: ISteleFundInfo(info).getFundShare(fundId),
+      currentTVL: getPortfolioValueUSD(fundId)
+    });
+
+    // Call NFT contract to mint
+    return ISteleFundManagerNFT(managerNFTContract).mintManagerNFT(params);
   }
 }
