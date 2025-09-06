@@ -29,6 +29,7 @@ struct MintParams {
 
 contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
   using Strings for uint256;
+  using NFTSVG for NFTSVG.SVGParams;
 
   // Events
   event ManagerNFTMinted(
@@ -317,7 +318,7 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
     FundManagerNFT memory nft = managerNFTs[tokenId];
 
     // Generate SVG image
-    string memory svg = NFTSVG.generateSVG(NFTSVG.SVGParams({
+    NFTSVG.SVGParams memory svgParams = NFTSVG.SVGParams({
       fundId: nft.fundId,
       manager: ownerOf(tokenId),
       fundCreatedTime: nft.fundCreatedTime,
@@ -325,7 +326,9 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
       investment: nft.investment,
       currentValue: nft.currentTVL,
       returnRate: nft.returnRate
-    }));
+    });
+    
+    string memory svg = svgParams.generateSVG();
     
     string memory image = string(abi.encodePacked(
       "data:image/svg+xml;base64,",
