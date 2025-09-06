@@ -396,7 +396,7 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
   function mintManagerNFT(uint256 fundId) external override onlyManager(msg.sender, fundId) nonReentrant returns (uint256) {
     require(managerNFTContract != address(0), "NNC"); // NFT Contract Not set
     address manager = ISteleFundInfo(info).manager(fundId);
-    require(manager != address(0), "NM");
+    require(manager == msg.sender, "NM");
 
     // Create mint parameters
     MintParams memory params = MintParams({
