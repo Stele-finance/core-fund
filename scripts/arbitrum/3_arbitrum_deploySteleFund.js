@@ -17,8 +17,16 @@ async function main() {
   console.log(`💰 WETH: ${wethTokenAddress}`);
   console.log(`🏛️ TimeLock: ${timeLockAddress}`);
 
-  // Step 1: Deploy SteleFundSetting
-  console.log("📝 Step 1: Deploying SteleFundSetting on Arbitrum...");
+  // Step 1: Deploy PriceOracle library
+  console.log("📚 Step 1: Deploying PriceOracle library on Arbitrum...");
+  const PriceOracle = await ethers.getContractFactory("PriceOracle");
+  const priceOracle = await PriceOracle.deploy();
+  await priceOracle.deployed();
+  const priceOracleAddress = priceOracle.address;
+  console.log(`✅ PriceOracle library deployed at: ${priceOracleAddress}\n`);
+
+  // Step 2: Deploy SteleFundSetting
+  console.log("📝 Step 2: Deploying SteleFundSetting on Arbitrum...");
   const SteleFundSetting = await ethers.getContractFactory("SteleFundSetting");
   const steleFundSetting = await SteleFundSetting.deploy(
     wethTokenAddress,
@@ -83,6 +91,7 @@ async function main() {
   // Final Summary
   console.log("🎉 DEPLOYMENT COMPLETE ON ARBITRUM! 🎉");
   console.log("=".repeat(60));
+  console.log(`📚 PriceOracle: ${priceOracleAddress}`);
   console.log(`📝 SteleFundSetting: ${steleFundSettingAddress}`);
   console.log(`📊 SteleFundInfo: ${steleFundInfoAddress}`);
   console.log(`💼 SteleFund: ${steleFundAddress}`);
@@ -94,6 +103,7 @@ async function main() {
     timestamp: new Date().toISOString(),
     network: "arbitrum",
     contracts: {
+      PriceOracle: priceOracleAddress,
       SteleFundSetting: steleFundSettingAddress,
       SteleFund: steleFundAddress,
       SteleFundInfo: steleFundInfoAddress,
