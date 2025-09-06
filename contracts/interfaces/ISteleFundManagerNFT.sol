@@ -4,7 +4,7 @@ pragma solidity ^0.8.28;
 // Mint parameters structure to avoid stack too deep
 struct MintParams {
   uint256 fundId;
-  uint256 fundCreatedBlock;
+  uint256 fundCreated;
   uint256 investment;
   uint256 currentTVL;
 }
@@ -18,7 +18,7 @@ interface ISteleFundManagerNFT {
     uint256 investment,
     uint256 currentTVL,
     int256 returnRate,
-    uint256 fundCreatedBlock
+    uint256 fundCreated
   );
 
   // Admin functions
@@ -30,7 +30,7 @@ interface ISteleFundManagerNFT {
   // View functions
   function getFundData(uint256 tokenId) external view returns (
     uint256 fundId,
-    uint256 fundCreatedBlock,
+    uint256 fundCreated,
     uint256 nftMintBlock,
     uint256 investment,
     uint256 currentTVL,
