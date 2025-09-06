@@ -3,7 +3,6 @@ pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Base64.sol";
 import "./libraries/NFTSVG.sol";
@@ -12,8 +11,8 @@ import "./interfaces/ISteleFundInfo.sol";
 // NFT metadata structure for fund manager records
 struct FundManagerNFT {
   uint256 fundId;
-  uint256 fundCreatedTime;     // Fund creation timestamp
-  uint256 nftMintTime;         // NFT mint timestamp
+  uint256 fundCreated;    // Fund creation block number
+  uint256 nftMintBlock;        // NFT mint block number
   uint256 investment;          // Investment Amount at NFT mint time
   uint256 currentTVL;          // Current Total Value Locked (TVL)
   int256 returnRate;           // Return rate in basis points (10000 = 100%), can be negative
@@ -22,12 +21,12 @@ struct FundManagerNFT {
 // Mint parameters structure
 struct MintParams {
   uint256 fundId;
-  uint256 fundCreatedBlock;
+  uint256 fundCreated;
   uint256 investment;
   uint256 currentTVL;
 }
 
-contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
+contract SteleFundManagerNFT is ERC721, ERC721Enumerable {
   using Strings for uint256;
   using NFTSVG for NFTSVG.SVGParams;
 
@@ -39,22 +38,29 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
     uint256 investment,
     uint256 currentTVL,
     int256 returnRate,
-    uint256 fundCreatedBlock
+    uint256 fundCreated
   );
   event BaseURIUpdated(string newBaseURI);
   event TransferAttemptBlocked(uint256 indexed tokenId, address from, address to, string reason);
 
   // State variables
-  ISteleFundInfo public fundInfo;
+  ISteleFundInfo public steleFundInfo;
+  address public steleFundContract;
   uint256 private _nextTokenId = 1;
   
   // NFT storage
   mapping(uint256 => FundManagerNFT) public managerNFTs;
   mapping(address => uint256[]) public userManagerNFTs;
-  
-  constructor(address _fundInfo) ERC721("Stele Fund Manager NFT", "SFMN") {
-    require(_fundInfo != address(0), "ZA");
-    fundInfo = ISteleFundInfo(_fundInfo);
+
+  constructor(address _steleFund, address _steleFundInfo) ERC721("Stele Fund Manager NFT", "SFMN") {
+    require(_steleFundInfo != address(0), "ZA");
+    steleFundInfo = ISteleFundInfo(_steleFundInfo);
+    steleFundContract = _steleFund;
+  }
+
+  modifier onlySteleFundContract() {
+    require(msg.sender == steleFundContract, "NSFC"); // Not Stele Fund Contract
+    _;
   }
 
   // Calculate return rate (can be negative)
@@ -70,91 +76,14 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
     }
   }
 
-  // Convert block number to approximate timestamp
-  function blockToTimestamp(uint256 blockNumber) internal pure returns (uint256) {
-    // Ethereum mainnet genesis block: 0 (July 30, 2015)
-    // Average block time: ~12 seconds
-    // Genesis timestamp: 1438269973 (July 30, 2015 15:26:13 UTC)
-    
-    uint256 genesisTimestamp = 1438269973; // July 30, 2015
-    uint256 averageBlockTime = 12; // seconds
-    
-    // Calculate approximate timestamp
-    return genesisTimestamp + (blockNumber * averageBlockTime);
-  }
 
-  // Convert block number to approximate date string (YYYY-MM-DD format)
-  function blockToDateString(uint256 blockNumber) internal pure returns (string memory) {
-    uint256 estimatedTimestamp = blockToTimestamp(blockNumber);
-    return timestampToDateString(estimatedTimestamp);
-  }
-
-  // Convert timestamp to date string (YYYY-MM-DD)
-  function timestampToDateString(uint256 timestamp) internal pure returns (string memory) {
-    // Days since Unix epoch (January 1, 1970)
-    uint256 daysSinceEpoch = timestamp / 86400; // 86400 seconds in a day
-    
-    // Calculate year (approximate)
-    uint256 year = 1970 + (daysSinceEpoch / 365);
-    
-    // Adjust for leap years (rough approximation)
-    uint256 leapYearAdjustment = (year - 1970) / 4;
-    uint256 adjustedDays = daysSinceEpoch - leapYearAdjustment;
-    year = 1970 + (adjustedDays / 365);
-    
-    // Calculate remaining days in the year
-    uint256 yearStartDays = (year - 1970) * 365 + ((year - 1970) / 4);
-    uint256 dayOfYear = daysSinceEpoch - yearStartDays;
-    
-    // Simple month calculation (approximate)
-    uint256 month;
-    uint256 day;
-    
-    if (dayOfYear <= 31) {
-      month = 1; day = dayOfYear;
-    } else if (dayOfYear <= 59) {
-      month = 2; day = dayOfYear - 31;
-    } else if (dayOfYear <= 90) {
-      month = 3; day = dayOfYear - 59;
-    } else if (dayOfYear <= 120) {
-      month = 4; day = dayOfYear - 90;
-    } else if (dayOfYear <= 151) {
-      month = 5; day = dayOfYear - 120;
-    } else if (dayOfYear <= 181) {
-      month = 6; day = dayOfYear - 151;
-    } else if (dayOfYear <= 212) {
-      month = 7; day = dayOfYear - 181;
-    } else if (dayOfYear <= 243) {
-      month = 8; day = dayOfYear - 212;
-    } else if (dayOfYear <= 273) {
-      month = 9; day = dayOfYear - 243;
-    } else if (dayOfYear <= 304) {
-      month = 10; day = dayOfYear - 273;
-    } else if (dayOfYear <= 334) {
-      month = 11; day = dayOfYear - 304;
-    } else {
-      month = 12; day = dayOfYear - 334;
-    }
-    
-    // Handle edge cases
-    if (day == 0) day = 1;
-    if (day > 31) day = 31;
-    
-    return string(abi.encodePacked(
-      Strings.toString(year),
-      "-",
-      month < 10 ? "0" : "", Strings.toString(month),
-      "-",
-      day < 10 ? "0" : "", Strings.toString(day)
-    ));
-  }
 
   // Mint Manager NFT (only callable by fund manager)
-  function mintManagerNFT(MintParams calldata params) external returns (uint256) {
-    address manager = fundInfo.manager(params.fundId);
+  function mintManagerNFT(MintParams calldata params) external onlySteleFundContract returns (uint256) {
+    address manager = steleFundInfo.manager(params.fundId);
     require(manager != address(0), "ZA");
     require(manager == msg.sender, "OM"); // Only Manager
-    require(params.fundCreatedBlock > 0, "IP"); // Invalid Period
+    require(params.fundCreated > 0, "IP"); // Invalid Period
     
     // Calculate return rate
     int256 returnRate = calculateReturnRate(params.currentTVL, params.investment);
@@ -166,8 +95,8 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
     // Store NFT metadata
     managerNFTs[tokenId] = FundManagerNFT({
       fundId: params.fundId,
-      fundCreatedTime: blockToTimestamp(params.fundCreatedBlock),
-      nftMintTime: block.timestamp,
+      fundCreated: params.fundCreated,
+      nftMintBlock: block.number,
       investment: params.investment,
       currentTVL: params.currentTVL,
       returnRate: returnRate
@@ -186,7 +115,7 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
       params.investment,
       params.currentTVL,
       returnRate,
-      blockToTimestamp(params.fundCreatedBlock)
+      params.fundCreated
     );
     
     return tokenId;
@@ -195,8 +124,8 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
   // Get NFT metadata
   function getFundData(uint256 tokenId) external view returns (
     uint256 fundId,
-    uint256 fundCreatedTime,
-    uint256 nftMintTime,
+    uint256 fundCreated,
+    uint256 nftMintBlock,
     uint256 investment,
     uint256 currentTVL,
     int256 returnRate
@@ -206,8 +135,8 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
     FundManagerNFT memory nft = managerNFTs[tokenId];
     return (
       nft.fundId,
-      nft.fundCreatedTime,
-      nft.nftMintTime,
+      nft.fundCreated,
+      nft.nftMintBlock,
       nft.investment,
       nft.currentTVL,
       nft.returnRate
@@ -275,7 +204,7 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
     bool isAuthentic,
     uint256 fundId,
     address originalManager,
-    uint256 mintTime
+    uint256 mintBlock
   ) {
     if (!_exists(tokenId)) {
       return (false, 0, address(0), 0);
@@ -286,7 +215,7 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
       true,
       nft.fundId,
       ownerOf(tokenId),
-      nft.nftMintTime
+      nft.nftMintBlock
     );
   }
 
@@ -321,8 +250,8 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
     NFTSVG.SVGParams memory svgParams = NFTSVG.SVGParams({
       fundId: nft.fundId,
       manager: ownerOf(tokenId),
-      fundCreatedTime: nft.fundCreatedTime,
-      nftMintTime: nft.nftMintTime,
+      fundCreated: nft.fundCreated,
+      nftMintBlock: nft.nftMintBlock,
       investment: nft.investment,
       currentValue: nft.currentTVL,
       returnRate: nft.returnRate

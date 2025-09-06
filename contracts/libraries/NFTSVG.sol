@@ -11,8 +11,8 @@ library NFTSVG {
     struct SVGParams {
         uint256 fundId;
         address manager;
-        uint256 fundCreatedTime;   // Fund creation timestamp
-        uint256 nftMintTime;       // NFT mint timestamp
+        uint256 fundCreated;  // Fund creation block number
+        uint256 nftMintBlock;      // NFT mint block number
         uint256 investment;        // Investment amount
         uint256 currentValue;      // Current investment value
         int256 returnRate;         // Return rate
@@ -74,8 +74,8 @@ library NFTSVG {
             generateDataRow('Investment', formatAmount(params.investment), '#FFFFFF', 190),
             generateDataRow('Current Value', formatAmount(params.currentValue), '#FFFFFF', 240),
             generateDataRow('Profit', profitStr, returnColor, 290),
-            generateDataRow('Fund Created', timestampToDateString(params.fundCreatedTime), '#9CA3AF', 340),
-            generateDataRow('NFT Minted', timestampToDateString(params.nftMintTime), '#9CA3AF', 390)
+            generateDataRow('Fund Created', string(abi.encodePacked('#', params.fundCreated.toString())), '#9CA3AF', 340),
+            generateDataRow('Mint Time', string(abi.encodePacked('#', params.nftMintBlock.toString())), '#9CA3AF', 390)
         ));
     }
 
@@ -152,64 +152,4 @@ library NFTSVG {
         return string(abi.encodePacked('hsl(', hue.toString(), ', 70%, 50%)'));
     }
 
-
-    // Convert timestamp to date string (YYYY-MM-DD)
-    function timestampToDateString(uint256 timestamp) internal pure returns (string memory) {
-        // Days since Unix epoch (January 1, 1970)
-        uint256 daysSinceEpoch = timestamp / 86400; // 86400 seconds in a day
-        
-        // Calculate year (approximate)
-        uint256 year = 1970 + (daysSinceEpoch / 365);
-        
-        // Adjust for leap years (rough approximation)
-        uint256 leapYearAdjustment = (year - 1970) / 4;
-        uint256 adjustedDays = daysSinceEpoch - leapYearAdjustment;
-        year = 1970 + (adjustedDays / 365);
-        
-        // Calculate remaining days in the year
-        uint256 yearStartDays = (year - 1970) * 365 + ((year - 1970) / 4);
-        uint256 dayOfYear = daysSinceEpoch - yearStartDays;
-        
-        // Simple month calculation (approximate)
-        uint256 month;
-        uint256 day;
-        
-        if (dayOfYear <= 31) {
-            month = 1; day = dayOfYear;
-        } else if (dayOfYear <= 59) {
-            month = 2; day = dayOfYear - 31;
-        } else if (dayOfYear <= 90) {
-            month = 3; day = dayOfYear - 59;
-        } else if (dayOfYear <= 120) {
-            month = 4; day = dayOfYear - 90;
-        } else if (dayOfYear <= 151) {
-            month = 5; day = dayOfYear - 120;
-        } else if (dayOfYear <= 181) {
-            month = 6; day = dayOfYear - 151;
-        } else if (dayOfYear <= 212) {
-            month = 7; day = dayOfYear - 181;
-        } else if (dayOfYear <= 243) {
-            month = 8; day = dayOfYear - 212;
-        } else if (dayOfYear <= 273) {
-            month = 9; day = dayOfYear - 243;
-        } else if (dayOfYear <= 304) {
-            month = 10; day = dayOfYear - 273;
-        } else if (dayOfYear <= 334) {
-            month = 11; day = dayOfYear - 304;
-        } else {
-            month = 12; day = dayOfYear - 334;
-        }
-        
-        // Handle edge cases
-        if (day == 0) day = 1;
-        if (day > 31) day = 31;
-        
-        return string(abi.encodePacked(
-            year.toString(),
-            "-",
-            month < 10 ? "0" : "", month.toString(),
-            "-",
-            day < 10 ? "0" : "", day.toString()
-        ));
-    }
 }
