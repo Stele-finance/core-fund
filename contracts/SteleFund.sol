@@ -75,6 +75,7 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     setting = _setting;
     info = _info;
     usdToken = _usdToken;
+    owner = msg.sender;
   }
 
   // Safe fund ID parsing from calldata

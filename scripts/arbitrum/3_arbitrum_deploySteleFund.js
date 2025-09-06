@@ -83,7 +83,6 @@ async function main() {
   // Final Summary
   console.log("🎉 DEPLOYMENT COMPLETE ON ARBITRUM! 🎉");
   console.log("=".repeat(60));
-  console.log(`📚 PriceOracle: ${priceOracleAddress}`);
   console.log(`📝 SteleFundSetting: ${steleFundSettingAddress}`);
   console.log(`📊 SteleFundInfo: ${steleFundInfoAddress}`);
   console.log(`💼 SteleFund: ${steleFundAddress}`);
@@ -95,7 +94,6 @@ async function main() {
     timestamp: new Date().toISOString(),
     network: "arbitrum",
     contracts: {
-      PriceOracle: priceOracleAddress,
       SteleFundSetting: steleFundSettingAddress,
       SteleFund: steleFundAddress,
       SteleFundInfo: steleFundInfoAddress,
