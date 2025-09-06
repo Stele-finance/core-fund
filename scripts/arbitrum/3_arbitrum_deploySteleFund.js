@@ -8,8 +8,8 @@ async function main() {
   console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
   // Arbitrum addresses
-  const steleTokenAddress = "0x08C9c9EE6F161c6056060BF6AC7fE85e38638619"; // Existing STELE token on Arbitrum
-  const timeLockAddress = "0x70Cc91A2B7F91efdb3B756512325AF978bda60F3"; // From step 1
+  const steleTokenAddress = "0xb4fb28a64c946c909d86388be279f8222fd42599"; // Existing STELE token on Arbitrum
+  const timeLockAddress = "0xa6e62AaaD807E9ffc276c7045bd06F2b064Ca9d7"; // From step 1
   const wethTokenAddress = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"; // Arbitrum WETH
   const usdcTokenAddress = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"; // Arbitrum USDC
 
