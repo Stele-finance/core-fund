@@ -10,6 +10,7 @@ async function main() {
   // Arbitrum addresses - Update with actual deployed addresses from step 3
   const steleFundAddress = "0x8Cd5F9350f628C92781254057F3467220831971c";
   const steleFundInfoAddress = "0x2B2Dc05E42CAfCa1b1d6839F41d2F27069d602Aa";
+  const timeLockAddress = "0xa6e62AaaD807E9ffc276c7045bd06F2b064Ca9d7"; // From step 1
 
   // Validate addresses
   if (!steleFundInfoAddress) {
@@ -28,10 +29,30 @@ async function main() {
   const steleFundManagerNFTAddress = steleFundManagerNFT.address;
   console.log(`✅ SteleFundManagerNFT deployed at: ${steleFundManagerNFTAddress}\n`);
 
-  // Step 2: Verify setup
-  console.log("🔍 Step 2: Verifying deployment...");
+  // Step 2: Set NFT contract address in SteleFund
+  console.log("🔗 Step 2: Setting SteleFundManagerNFT address in SteleFund...");
+  const steleFund = await ethers.getContractAt("SteleFund", steleFundAddress);
+  const setNFTTx = await steleFund.setManagerNFTContract(steleFundManagerNFTAddress);
+  await setNFTTx.wait();
+  console.log(`✅ SteleFundManagerNFT address set in SteleFund\n`);
+
+  // Step 3: Transfer SteleFund ownership to TimeLock
+  console.log("🏛️ Step 3: Transferring SteleFund ownership to TimeLock...");
+  try {
+    const ownershipTx = await steleFund.transferOwnership(timeLockAddress);
+    await ownershipTx.wait();
+    console.log(`✅ SteleFund ownership transferred to: ${timeLockAddress}\n`);
+  } catch (error) {
+    console.log("⚠️  SteleFund ownership transfer failed:", error.message);
+    console.log("   Please transfer ownership manually after deployment\n");
+  }
+
+  // Step 4: Verify setup
+  console.log("🔍 Step 4: Verifying deployment...");
   const fundInfo = await steleFundManagerNFT.steleFundInfo();
   const fundContract = await steleFundManagerNFT.steleFundContract();
+  const managerNFTAddress = await steleFund.managerNFTContract();
+  const steleFundOwner = await steleFund.owner();
   const name = await steleFundManagerNFT.name();
   const symbol = await steleFundManagerNFT.symbol();
 
@@ -39,9 +60,13 @@ async function main() {
   console.log(`   NFT Name: ${name}`);
   console.log(`   NFT Symbol: ${symbol}`);
   console.log(`   SteleFund Contract: ${fundContract}`);
+  console.log(`   SteleFund Owner: ${steleFundOwner}`);
   console.log(`   FundInfo address: ${fundInfo}`);
+  console.log(`   Manager NFT in SteleFund: ${managerNFTAddress}`);
   console.log(`   FundInfo correctly set: ${fundInfo === steleFundInfoAddress}`);
-  console.log(`   SteleFund correctly set: ${fundContract === steleFundAddress}\n`);
+  console.log(`   SteleFund correctly set: ${fundContract === steleFundAddress}`);
+  console.log(`   NFT address correctly set: ${managerNFTAddress === steleFundManagerNFTAddress}`);
+  console.log(`   SteleFund governance enabled: ${steleFundOwner === timeLockAddress}\n`);
 
   // Final Summary
   console.log("🎉 DEPLOYMENT COMPLETE ON ARBITRUM! 🎉");
