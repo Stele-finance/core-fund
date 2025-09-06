@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
 
-contract SteleFundGovernor is 
+contract SteleGovernor is 
     Governor, 
     GovernorSettings, 
     GovernorCountingSimple, 
@@ -20,10 +20,10 @@ contract SteleFundGovernor is
         IVotes _token, 
         TimelockController _timelock,
         uint256 _quorumPercentage,
-        uint32 _votingPeriod,
-        uint48 _votingDelay
+        uint256 _votingPeriod,
+        uint256 _votingDelay
     )
-        Governor("SteleFundGovernor")
+        Governor("SteleGovernor")
         GovernorSettings(
           _votingDelay, /* 1 block */ // voting delay
           _votingPeriod, // 45818, /* 1 week */ // voting period
@@ -39,7 +39,7 @@ contract SteleFundGovernor is
     function votingDelay()
         public
         view
-        override(Governor, GovernorSettings)
+        override(IGovernor, GovernorSettings)
         returns (uint256)
     {
         return super.votingDelay();
@@ -48,7 +48,7 @@ contract SteleFundGovernor is
     function votingPeriod()
         public
         view
-        override(Governor, GovernorSettings)
+        override(IGovernor, GovernorSettings)
         returns (uint256)
     {
         return super.votingPeriod();
@@ -57,7 +57,7 @@ contract SteleFundGovernor is
     function quorum(uint256 blockNumber)
         public
         view
-        override(Governor, GovernorVotesQuorumFraction)
+        override(IGovernor, GovernorVotesQuorumFraction)
         returns (uint256)
     {
         return super.quorum(blockNumber);
@@ -72,13 +72,12 @@ contract SteleFundGovernor is
         return super.state(proposalId);
     }
 
-    function proposalNeedsQueuing(uint256 proposalId)
+    function propose(address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description)
         public
-        view
-        override(Governor, GovernorTimelockControl)
-        returns (bool)
+        override(Governor, IGovernor)
+        returns (uint256)
     {
-        return super.proposalNeedsQueuing(proposalId);
+        return super.propose(targets, values, calldatas, description);
     }
 
     function proposalThreshold()
@@ -90,19 +89,11 @@ contract SteleFundGovernor is
         return super.proposalThreshold();
     }
 
-    function _queueOperations(uint256 proposalId, address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash)
-        internal
-        override(Governor, GovernorTimelockControl)
-        returns (uint48)
-    {
-        return super._queueOperations(proposalId, targets, values, calldatas, descriptionHash);
-    }
-
-    function _executeOperations(uint256 proposalId, address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash)
+    function _execute(uint256 proposalId, address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash)
         internal
         override(Governor, GovernorTimelockControl)
     {
-        super._executeOperations(proposalId, targets, values, calldatas, descriptionHash);
+        super._execute(proposalId, targets, values, calldatas, descriptionHash);
     }
 
     function _cancel(address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash)
@@ -125,7 +116,7 @@ contract SteleFundGovernor is
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(Governor)
+        override(Governor, GovernorTimelockControl)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);

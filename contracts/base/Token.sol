@@ -1,20 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
 import '../interfaces/IToken.sol';
 
-abstract contract Token is IToken {
+abstract contract Token {
 
-  function getTokenAmount(Token[] memory tokens, address token) internal pure returns (uint256) {
-    for (uint256 i=0; i<tokens.length; i++) {
-      if (tokens[i].token == token) {
-        return tokens[i].amount;
-      }
-    }
-    return 0;
-  }
-
-  function increaseToken(Token[] storage tokens, address token, uint256 amount) internal {
+  function increaseToken(IToken.Token[] storage tokens, address token, uint256 amount) internal {
     bool isNewToken = true;
     for (uint256 i=0; i<tokens.length; i++) {
       if (tokens[i].token == token) {
@@ -24,11 +15,11 @@ abstract contract Token is IToken {
       }
     }
     if (isNewToken) {
-      tokens.push(Token(token, amount));
+      tokens.push(IToken.Token(token, amount));
     }
   }
 
-  function decreaseToken(Token[] storage tokens, address token, uint256 amount) internal returns (bool) {
+  function decreaseToken(IToken.Token[] storage tokens, address token, uint256 amount) internal returns (bool) {
     for (uint256 i=0; i<tokens.length; i++) {
       if (tokens[i].token == token) {
         require(tokens[i].amount >= amount, 'NET');

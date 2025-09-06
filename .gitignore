@@ -21,4 +21,8 @@ yarn.lock
 cache/
 
 DS_Store.json
+.DS_Store
+
+# Hardhat
 typechain-types/
+

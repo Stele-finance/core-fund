@@ -9,19 +9,21 @@ async function main() {
 
   // Arbitrum addresses
   const steleTokenAddress = "0x08C9c9EE6F161c6056060BF6AC7fE85e38638619"; // Existing STELE token on Arbitrum
-  const timeLockAddress = "0x914188a8025F45184050cd8aA56BF26c38334183"; // From step 1
+  const timeLockAddress = "0x70Cc91A2B7F91efdb3B756512325AF978bda60F3"; // From step 1
   const wethTokenAddress = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"; // Arbitrum WETH
+  const usdcTokenAddress = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"; // Arbitrum USDC
+  
 
   console.log(`🎯 Stele Token: ${steleTokenAddress}`);
   console.log(`💰 WETH: ${wethTokenAddress}`);
-  console.log(`🏛️ TimeLock: ${timeLockAddress}\n`);
+  console.log(`🏛️ TimeLock: ${timeLockAddress}`);
 
   // Step 1: Deploy SteleFundSetting
   console.log("📝 Step 1: Deploying SteleFundSetting on Arbitrum...");
   const SteleFundSetting = await ethers.getContractFactory("SteleFundSetting");
   const steleFundSetting = await SteleFundSetting.deploy(
-    steleTokenAddress,
-    wethTokenAddress
+    wethTokenAddress,
+    usdcTokenAddress
   );
   await steleFundSetting.waitForDeployment();
   const steleFundSettingAddress = await steleFundSetting.getAddress();
@@ -35,13 +37,14 @@ async function main() {
   const steleFundInfoAddress = await steleFundInfo.getAddress();
   console.log(`✅ SteleFundInfo deployed at: ${steleFundInfoAddress}\n`);
 
-  // Step 3: Deploy SteleFund with all required addresses
+  // Step 3: Deploy SteleFund
   console.log("💼 Step 3: Deploying SteleFund on Arbitrum...");
   const SteleFund = await ethers.getContractFactory("SteleFund");
   const steleFund = await SteleFund.deploy(
     wethTokenAddress,
     steleFundSettingAddress,
-    steleFundInfoAddress
+    steleFundInfoAddress,
+    usdcTokenAddress
   );
   await steleFund.waitForDeployment();
   const steleFundAddress = await steleFund.getAddress();
@@ -68,13 +71,13 @@ async function main() {
   const currentOwner = await steleFundSetting.owner();
   const infoOwner = await steleFundInfo.owner();
   const weth9 = await steleFundSetting.weth9();
-  const stele = await steleFundSetting.steleToken();
+  const usdc = await steleFundSetting.usdc();
 
   console.log("🎯 Verification Results:");
   console.log(`   SteleFundSetting owner: ${currentOwner}`);
   console.log(`   SteleFundInfo owner: ${infoOwner}`);
   console.log(`   WETH9: ${weth9}`);
-  console.log(`   STELE: ${stele}`);
+  console.log(`   USDC: ${usdc}`);
   console.log(`   Governance enabled: ${currentOwner === timeLockAddress}`);
   console.log(`   Info ownership correct: ${infoOwner === steleFundAddress}\n`);
 
@@ -82,8 +85,8 @@ async function main() {
   console.log("🎉 DEPLOYMENT COMPLETE ON ARBITRUM! 🎉");
   console.log("=".repeat(60));
   console.log(`📝 SteleFundSetting: ${steleFundSettingAddress}`);
-  console.log(`💼 SteleFund: ${steleFundAddress}`);
   console.log(`📊 SteleFundInfo: ${steleFundInfoAddress}`);
+  console.log(`💼 SteleFund: ${steleFundAddress}`);
   console.log(`🏛️ Governance: ${currentOwner === timeLockAddress ? '✅ Enabled' : '❌ Disabled'}`);
   console.log("=".repeat(60));
 

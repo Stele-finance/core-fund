@@ -11,17 +11,22 @@ async function main() {
   const steleTokenAddress = "0x71c24377e7f24b6d822C9dad967eBC77C04667b5"; // Existing STELE token
   const timeLockAddress = "YOUR_TIMELOCK_ADDRESS"; // From step 1
   const wethTokenAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"; // Mainnet WETH
+  const usdcTokenAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"; // Mainnet USDC
+  
+  // Uniswap V3 addresses on Mainnet (V4 not deployed yet)
+  const swapRouterAddress = "0xE592427A0AEce92De3Edee1F18E0157C05861564"; // V3 SwapRouter
 
   console.log(`🎯 Stele Token: ${steleTokenAddress}`);
   console.log(`💰 WETH: ${wethTokenAddress}`);
-  console.log(`🏛️ TimeLock: ${timeLockAddress}\n`);
+  console.log(`🏛️ TimeLock: ${timeLockAddress}`);
+  console.log(`🦄 Uniswap V3 SwapRouter: ${swapRouterAddress}\n`);
 
   // Step 1: Deploy SteleFundSetting
   console.log("📝 Step 1: Deploying SteleFundSetting...");
   const SteleFundSetting = await ethers.getContractFactory("SteleFundSetting");
   const steleFundSetting = await SteleFundSetting.deploy(
-    steleTokenAddress,
-    wethTokenAddress
+    wethTokenAddress,
+    usdcTokenAddress
   );
   await steleFundSetting.waitForDeployment();
   const steleFundSettingAddress = await steleFundSetting.getAddress();
@@ -35,13 +40,16 @@ async function main() {
   const steleFundInfoAddress = await steleFundInfo.getAddress();
   console.log(`✅ SteleFundInfo deployed at: ${steleFundInfoAddress}\n`);
 
-  // Step 3: Deploy SteleFund with all required addresses
-  console.log("💼 Step 3: Deploying SteleFund...");
+  // Step 3: Deploy SteleFund with all required addresses including Uniswap V3
+  console.log("💼 Step 3: Deploying SteleFund with Uniswap V3...");
   const SteleFund = await ethers.getContractFactory("SteleFund");
   const steleFund = await SteleFund.deploy(
     wethTokenAddress,
     steleFundSettingAddress,
-    steleFundInfoAddress
+    steleFundInfoAddress,
+    usdcTokenAddress,
+    swapRouterAddress,  // Using V3 SwapRouter as poolManager
+    swapRouterAddress   // Using V3 SwapRouter as universalRouter
   );
   await steleFund.waitForDeployment();
   const steleFundAddress = await steleFund.getAddress();

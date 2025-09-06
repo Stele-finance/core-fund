@@ -1,33 +1,27 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
 interface ISteleFund {
-  event Deposit(uint256 fundId, address indexed investor, address token, uint256 amount);
-  event Withdraw(uint256 fundId, address indexed investor, address token, uint256 amount, uint256 feeAmount);
-  event Swap(uint256 fundId, address indexed investor, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut);
+  event Deposit(uint256 fundId, address indexed investor, address token, uint256 amount, uint256 investorShare, uint256 fundShare, uint256 managerFee);
+  event Withdraw(uint256 fundId, address indexed investor, uint256 percentage, uint256 investorShare, uint256 fundShare);
+  event Swap(uint256 fundId, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut);
   event DepositFee(uint256 fundId, address indexed investor, address token, uint256 amount);
   event WithdrawFee(uint256 fundId, address indexed manager, address token, uint256 amount);
-
-  enum SwapType {
-    EXACT_INPUT_SINGLE_HOP,
-    EXACT_INPUT_MULTI_HOP
-  }
+  event ManagerNFTContractSet(address indexed managerNFTContract);
 
   struct SwapParams {
-    SwapType swapType;
     address tokenIn;
     address tokenOut;
     uint24 fee;
     uint256 amountIn;
-    uint256 amountOut;
-    uint256 amountInMaximum;
     uint256 amountOutMinimum;
-    uint160 sqrtPriceLimitX96;
-    bytes path;
   }
 
-  function deposit(uint256 fundId, address token, uint256 amount) external;
-  function withdraw(uint256 fundId, address token, uint256 amount) external payable;
-  function swap(uint256 fundId, address investor, SwapParams[] calldata trades) external;
-  function withdrawFee(uint256 fundId, address token, uint256 amount) external payable;
+  function owner() external view returns (address);
+  function withdraw(uint256 fundId, uint256 percentage) external payable;
+  function swap(uint256 fundId, SwapParams[] calldata trades) external;
+  function withdrawFee(uint256 fundId, address token, uint256 percentage) external payable;
+  function setManagerNFTContract(address _managerNFTContract) external;
+  function getManagerNFTContract() external view returns (address);
+  function mintManagerNFT(uint256 fundId) external returns (uint256);
 }
