@@ -41,6 +41,7 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
     uint256 fundCreatedBlock
   );
   event BaseURIUpdated(string newBaseURI);
+  event TransferAttemptBlocked(uint256 indexed tokenId, address from, address to, string reason);
 
   // State variables
   ISteleFundInfo public fundInfo;
@@ -51,12 +52,6 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
   mapping(address => uint256[]) public userManagerNFTs;
   
   constructor(address _fundInfo) ERC721("Stele Fund Manager NFT", "SFMN") {
-    require(_fundInfo != address(0), "ZA");
-    fundInfo = ISteleFundInfo(_fundInfo);
-  }
-
-  // Admin functions
-  function setFundInfo(address _fundInfo) external onlyOwner {
     require(_fundInfo != address(0), "ZA");
     fundInfo = ISteleFundInfo(_fundInfo);
   }
@@ -223,6 +218,77 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
     return userManagerNFTs[manager];
   }
 
+  // ============ SOULBOUND NFT FUNCTIONS ============
+  
+  // Transfer functions are blocked for soulbound functionality
+  function transferFrom(address from, address to, uint256 tokenId) public override(ERC721, IERC721) {
+    emit TransferAttemptBlocked(tokenId, from, to, "Soulbound NFT cannot be transferred");
+    revert("SBT"); // Soulbound Token
+  }
+  
+  function safeTransferFrom(address from, address to, uint256 tokenId) public override(ERC721, IERC721) {
+    emit TransferAttemptBlocked(tokenId, from, to, "Soulbound NFT cannot be transferred");
+    revert("SBT");
+  }
+  
+  function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory /* data */) public override(ERC721, IERC721) {
+    emit TransferAttemptBlocked(tokenId, from, to, "Soulbound NFT cannot be transferred");
+    revert("SBT");
+  }
+  
+  // Approval functions are blocked since transfers are not allowed
+  function approve(address /* to */, uint256 /* tokenId */) public pure override(ERC721, IERC721) {
+    revert("SBT");
+  }
+  
+  function setApprovalForAll(address /* operator */, bool /* approved */) public pure override(ERC721, IERC721) {
+    revert("SBT");
+  }
+  
+  function getApproved(uint256 tokenId) public view override(ERC721, IERC721) returns (address) {
+    require(_exists(tokenId), "TNE");
+    return address(0); // Always return zero address for soulbound tokens
+  }
+  
+  function isApprovedForAll(address /* owner */, address /* operator */) public pure override(ERC721, IERC721) returns (bool) {
+    return false; // Always return false for soulbound tokens
+  }
+  
+  // Check if this is a soulbound token
+  function isSoulbound() external pure returns (bool) {
+    return true;
+  }
+  
+  // Get soulbound token information
+  function getSoulboundInfo(uint256 tokenId) external view returns (
+    bool isSoulboundToken,
+    address boundTo,
+    string memory reason
+  ) {
+    require(_exists(tokenId), "TNE");
+    return (true, ownerOf(tokenId), "Fund Manager NFT bound to fund manager");
+  }
+
+  // Verify if NFT was minted by this contract
+  function verifyNFTAuthenticity(uint256 tokenId) external view returns (
+    bool isAuthentic,
+    uint256 fundId,
+    address originalManager,
+    uint256 mintTime
+  ) {
+    if (!_exists(tokenId)) {
+      return (false, 0, address(0), 0);
+    }
+    
+    FundManagerNFT memory nft = managerNFTs[tokenId];
+    return (
+      true,
+      nft.fundId,
+      ownerOf(tokenId),
+      nft.nftMintTime
+    );
+  }
+
   // Format return rate for display
   function formatReturnRate(int256 returnRate) internal pure returns (string memory) {
     uint256 absRate = returnRate >= 0 ? uint256(returnRate) : uint256(-returnRate);
@@ -297,7 +363,6 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, Ownable {
       Base64.encode(bytes(json))
     ));
   }
-
 
   // Override required functions
   function _beforeTokenTransfer(address from, address to, uint256 tokenId, uint256 batchSize)

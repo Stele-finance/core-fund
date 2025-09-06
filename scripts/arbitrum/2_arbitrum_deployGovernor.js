@@ -2,20 +2,19 @@ const { ethers } = require("hardhat");
 
 async function main() {
   const [deployer] = await ethers.getSigners();
-  console.log("Deploying governance contracts on Arbitrum with the account:", deployer.address);
+  console.log("Deploying governance contracts with the account:", deployer.address);
   console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
-  // Arbitrum addresses
-  const tokenAddress = "0x08C9c9EE6F161c6056060BF6AC7fE85e38638619"; // Existing STELE token on Arbitrum
-  const timeLockAddress = "0x70Cc91A2B7F91efdb3B756512325AF978bda60F3"; // From step 1
-  
+  // Arbitrum
+  const tokenAddress = "0xB4fB28A64C946c909D86388Be279F8222Fd42599"; // Stele Token
+  const timeLockAddress = "0x807A096d87B2C19Ed8DEC5B9c9e67368ad872502";
   // Governor values
   const QUORUM_PERCENTAGE = 4; // 4%
   const VOTING_PERIOD = 272; // 1 hour for initial testing period, default : 7 days (2,400,000 blocks)
   const VOTING_DELAY = 1; // 1 block
 
   // Deploy Governor
-  console.log("Deploying SteleFundGovernor on Arbitrum...");
+  console.log("Deploying SteleFundGovernor...");
   const SteleFundGovernor = await ethers.getContractFactory("SteleFundGovernor");
   const governor = await SteleFundGovernor.deploy(
     tokenAddress,
@@ -24,18 +23,18 @@ async function main() {
     VOTING_PERIOD,
     VOTING_DELAY
   );
-  await governor.deploymentTransaction().wait();
-  const governorAddress = governor.target;
+  await governor.deployed();
+  const governorAddress = await governor.address;
   console.log("SteleFundGovernor deployed to:", governorAddress);
 
   // Setup roles
   console.log("Setting up roles...");
   
   // TimeLock roles to be set up
-  const timeLock = await ethers.getContractAt("TimeLock", timeLockAddress);
+  const timeLock = await ethers.getContractAt("TimeLock", timeLockAddress)
   const proposerRole = await timeLock.PROPOSER_ROLE();
   const executorRole = await timeLock.EXECUTOR_ROLE();
-  const adminRole = await timeLock.DEFAULT_ADMIN_ROLE();
+  const adminRole = await timeLock.TIMELOCK_ADMIN_ROLE();
 
   // Grant proposer role to governor
   const proposerTx = await timeLock.grantRole(proposerRole, governorAddress);
@@ -43,7 +42,7 @@ async function main() {
   console.log("Proposer role granted to governor");
 
   // Grant executor role to everyone (address zero)
-  const executorTx = await timeLock.grantRole(executorRole, ethers.ZeroAddress);
+  const executorTx = await timeLock.grantRole(executorRole, "0x0000000000000000000000000000000000000000");
   await executorTx.wait();
   console.log("Executor role granted to everyone");
 
@@ -52,10 +51,10 @@ async function main() {
   await revokeTx.wait();
   console.log("Admin role revoked from deployer");
 
-  console.log("Governance setup completed on Arbitrum!");
+  console.log("Governance setup completed!");
 }
 
 main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
-});
+}); 
