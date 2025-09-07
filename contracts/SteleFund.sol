@@ -153,26 +153,26 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     }
     
     // Calculate manager fee (only for investors, not manager)
-    uint256 managerFee = 0;
-    uint256 netDepositAmount = msg.value;
+    uint256 feeAmount = 0;
+    uint256 fundAmount = msg.value;
     if (msg.sender != ISteleFundInfo(info).manager(fundId)) {
       uint256 feeRate = ISteleFundSetting(setting).managerFee();
-      managerFee = PriceOracle.mulDiv(msg.value, feeRate, BASIS_POINTS);
-      netDepositAmount = msg.value - managerFee;
+      feeAmount = PriceOracle.mulDiv(msg.value, feeRate, BASIS_POINTS);
+      fundAmount = msg.value - feeAmount;
     }
     
     // Calculate shares based on net deposit amount (after fee deduction)
-    uint256 sharesToMint = _calculateSharesToMint(fundId, weth9, netDepositAmount);
+    uint256 sharesToMint = _calculateSharesToMint(fundId, weth9, fundAmount);
     require(sharesToMint > 0, "ZS"); // Zero shares
     
     // Update state FIRST (before external calls)
-    ISteleFundInfo(info).increaseFundToken(fundId, weth9, netDepositAmount); // Net amount to fund pool
-    if (managerFee > 0) {
-      ISteleFundInfo(info).increaseFeeToken(fundId, weth9, managerFee); // Fee amount to fee pool
+    ISteleFundInfo(info).increaseFundToken(fundId, weth9, fundAmount); // Net amount to fund pool
+    if (feeAmount > 0) {
+      ISteleFundInfo(info).increaseFeeToken(fundId, weth9, feeAmount); // Fee amount to fee pool
     }
     (uint256 investorShare, uint256 fundShare) = ISteleFundInfo(info).increaseShare(fundId, msg.sender, sharesToMint);
     
-    emit Deposit(fundId, msg.sender, weth9, msg.value, investorShare, fundShare, managerFee);
+    emit Deposit(fundId, msg.sender, weth9, msg.value, investorShare, fundShare, fundAmount, feeAmount);
 
     // External call LAST
     IWETH9(weth9).deposit{value: msg.value}();
@@ -246,7 +246,6 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
       }
     }
   }
-
 
   // Uniswap V3 Swap Implementation with slippage protection
   function executeV3Swap(uint256 fundId, SwapParams calldata trade) private {

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.28;
 
 interface ISteleFund {
-  event Deposit(uint256 fundId, address indexed investor, address token, uint256 amount, uint256 investorShare, uint256 fundShare, uint256 managerFee);
+  event Deposit(uint256 fundId, address indexed investor, address token, uint256 amount, uint256 investorShare, uint256 fundShare, uint256 fundAmount, uint256 feeAmount);
   event Withdraw(uint256 fundId, address indexed investor, uint256 percentage, uint256 investorShare, uint256 fundShare);
   event Swap(uint256 fundId, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut);
   event WithdrawFee(uint256 fundId, address indexed manager, address token, uint256 amount);

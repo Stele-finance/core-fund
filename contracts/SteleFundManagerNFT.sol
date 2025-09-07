@@ -60,7 +60,6 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, ISteleFundManagerNFT {
   function mintManagerNFT(MintParams calldata params) external onlySteleFundContract returns (uint256) {
     address manager = steleFundInfo.manager(params.fundId);
     require(manager != address(0), "ZA");
-    require(manager == msg.sender, "OM"); // Only Manager
     require(params.fundCreated > 0, "IP"); // Invalid Period
     
     // Calculate return rate
