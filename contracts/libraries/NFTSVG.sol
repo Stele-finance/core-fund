@@ -19,91 +19,133 @@ library NFTSVG {
     }
 
     function generateSVG(SVGParams memory params) internal pure returns (string memory) {
-        string memory returnColor = params.returnRate >= 0 ? "#10B981" : "#EF4444";
-        string memory returnSign = params.returnRate >= 0 ? "+" : "";
-        
         return string(abi.encodePacked(
-            '<svg width="500" height="700" viewBox="0 0 500 700" xmlns="http://www.w3.org/2000/svg">',
-            '<defs>',
-                '<filter id="glow">',
-                    '<feGaussianBlur stdDeviation="2" result="coloredBlur"/>',
-                    '<feMerge>',
-                        '<feMergeNode in="coloredBlur"/>',
-                        '<feMergeNode in="SourceGraphic"/>',
-                    '</feMerge>',
-                '</filter>',
-            '</defs>',
-            generateBackground(),
-            generateHeader(params.fundId),
-            generateDataRows(params, returnColor, returnSign),
-            generateFooter(params.manager),
+            '<svg width="300" height="400" viewBox="0 0 300 400" xmlns="http://www.w3.org/2000/svg">',
+            generateDefs(),
+            generateCard(),
+            generateTitle(),
+            generateRankBadge(params.fundId),
+            generateStatsGrid(params),
+            generateSeparator(),
+            generateInvestmentSummary(params),
+            generateFooter(),
             '</svg>'
         ));
     }
 
-    function generateBackground() internal pure returns (string memory) {
+    function generateDefs() internal pure returns (string memory) {
         return string(abi.encodePacked(
-            '<rect width="500" height="700" fill="#1F1F23" rx="24" ry="24"/>',
-            '<rect x="20" y="20" width="460" height="660" fill="#2A2A2E" rx="20" ry="20" stroke="#404040" stroke-width="1"/>'
+            '<defs>',
+                '<linearGradient id="orangeGradient" x1="0%" y1="0%" x2="100%" y2="100%">',
+                    '<stop offset="0%" style="stop-color:#ff8c42;stop-opacity:1" />',
+                    '<stop offset="100%" style="stop-color:#e55100;stop-opacity:1" />',
+                '</linearGradient>',
+                '<linearGradient id="cardBackground" x1="0%" y1="0%" x2="0%" y2="100%">',
+                    '<stop offset="0%" style="stop-color:#2a2a2e;stop-opacity:1" />',
+                    '<stop offset="100%" style="stop-color:#1f1f23;stop-opacity:1" />',
+                '</linearGradient>',
+                '<filter id="cardShadow">',
+                    '<feDropShadow dx="0" dy="2" stdDeviation="8" flood-color="#000" flood-opacity="0.06"/>',
+                '</filter>',
+            '</defs>'
         ));
     }
 
-    function generateHeader(uint256 fundId) internal pure returns (string memory) {
+    function generateCard() internal pure returns (string memory) {
         return string(abi.encodePacked(
-            '<text x="250" y="70" font-family="SF Pro Display, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">',
-            'Stele Fund Manager',
+            '<rect width="300" height="400" rx="12" fill="url(#cardBackground)" stroke="#404040" stroke-width="1" filter="url(#cardShadow)"/>',
+            '<rect x="0" y="0" width="300" height="4" rx="12" fill="url(#orangeGradient)"/>'
+        ));
+    }
+
+    function generateTitle() internal pure returns (string memory) {
+        return string(abi.encodePacked(
+            '<text x="24" y="40" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="20" font-weight="600" fill="#f9fafb">',
+                'Fund Performance',
             '</text>',
-            '<text x="250" y="100" font-family="SF Pro Display, -apple-system, sans-serif" font-size="16" fill="#9CA3AF" text-anchor="middle">',
-            'Certificate #', fundId.toString(),
+            '<text x="24" y="60" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="14" fill="#9ca3af">',
+                'Stele Protocol',
             '</text>'
         ));
     }
 
-    function generateDataRows(SVGParams memory params, string memory returnColor, string memory returnSign) internal pure returns (string memory) {
-        uint256 absRate = params.returnRate >= 0 ? uint256(params.returnRate) : uint256(-params.returnRate);
-        string memory profitStr = string(abi.encodePacked(
-            returnSign,
-            (absRate / 100).toString(),
-            '.',
-            formatDecimals(absRate % 100),
-            '%'
+    function generateRankBadge(uint256 fundId) internal pure returns (string memory) {
+        return string(abi.encodePacked(
+            '<rect x="24" y="85" width="80" height="32" rx="16" fill="url(#orangeGradient)"/>',
+            '<text x="64" y="103" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="14" font-weight="600" fill="#ffffff" text-anchor="middle">',
+                'Fund #', fundId.toString(),
+            '</text>'
         ));
+    }
+
+    function generateStatsGrid(SVGParams memory params) internal pure returns (string memory) {
+        string memory returnText = formatReturnRate(params.returnRate);
+        string memory returnColor = params.returnRate >= 0 ? "#10b981" : "#ef4444";
         
         return string(abi.encodePacked(
-            generateDataRow('Fund ID', string(abi.encodePacked('#', params.fundId.toString())), '#FFFFFF', 140),
-            generateDataRow('Investment', formatAmount(params.investment), '#FFFFFF', 190),
-            generateDataRow('Current Value', formatAmount(params.currentValue), '#FFFFFF', 240),
-            generateDataRow('Profit', profitStr, returnColor, 290),
-            generateDataRow('Fund Created', string(abi.encodePacked('#', params.fundCreated.toString())), '#9CA3AF', 340),
-            generateDataRow('Mint Time', string(abi.encodePacked('#', params.nftMintBlock.toString())), '#9CA3AF', 390)
+            '<g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">',
+                '<text x="24" y="140" font-size="14" font-weight="500" fill="#9ca3af">Fund ID</text>',
+                '<text x="276" y="140" font-size="14" font-weight="600" fill="#f9fafb" text-anchor="end">#', params.fundId.toString(), '</text>',
+                '<text x="24" y="165" font-size="14" font-weight="500" fill="#9ca3af">Manager</text>',
+                '<text x="276" y="165" font-size="14" font-weight="600" fill="#f9fafb" text-anchor="end">', addressToString(params.manager), '</text>',
+                '<text x="24" y="190" font-size="14" font-weight="500" fill="#9ca3af">Created</text>',
+                '<text x="276" y="190" font-size="14" font-weight="600" fill="#f9fafb" text-anchor="end">', params.fundCreated.toString(), '</text>',
+                '<text x="24" y="215" font-size="14" font-weight="500" fill="#9ca3af">Minted</text>',
+                '<text x="276" y="215" font-size="14" font-weight="600" fill="#f9fafb" text-anchor="end">', params.nftMintBlock.toString(), '</text>',
+                '<text x="24" y="240" font-size="14" font-weight="500" fill="#9ca3af">Return Rate</text>',
+                '<text x="276" y="240" font-size="16" font-weight="700" fill="', returnColor, '" text-anchor="end">', returnText, '</text>',
+            '</g>'
         ));
     }
 
-    function generateDataRow(string memory label, string memory value, string memory valueColor, uint256 yPos) internal pure returns (string memory) {
+    function generateSeparator() internal pure returns (string memory) {
+        return '<line x1="24" y1="270" x2="276" y2="270" stroke="#404040" stroke-width="1"/>';
+    }
+
+    function generateInvestmentSummary(SVGParams memory params) internal pure returns (string memory) {
+        uint256 profit = params.returnRate >= 0 ? 
+            params.currentValue - params.investment : 
+            params.investment - params.currentValue;
+        string memory profitSign = params.returnRate >= 0 ? "+" : "-";
+        string memory profitColor = params.returnRate >= 0 ? "#10b981" : "#ef4444";
+        
         return string(abi.encodePacked(
-            '<text x="60" y="', (yPos + 20).toString(), '" font-family="SF Pro Display, -apple-system, sans-serif" font-size="16" font-weight="400" fill="#9CA3AF">',
-            label,
-            '</text>',
-            '<text x="440" y="', (yPos + 20).toString(), '" font-family="SF Pro Display, -apple-system, sans-serif" font-size="16" font-weight="600" fill="', valueColor, '" text-anchor="end">',
-            value,
-            '</text>',
-            yPos < 390 ? string(abi.encodePacked('<line x1="60" y1="', (yPos + 30).toString(), '" x2="440" y2="', (yPos + 30).toString(), '" stroke="#404040" stroke-width="1"/>')) : ''
+            '<g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">',
+                '<text x="24" y="295" font-size="14" font-weight="500" fill="#9ca3af">Investment</text>',
+                '<text x="276" y="295" font-size="14" font-weight="600" fill="#f9fafb" text-anchor="end">', formatAmount(params.investment), '</text>',
+                '<text x="24" y="320" font-size="14" font-weight="500" fill="#9ca3af">Current Value</text>',
+                '<text x="276" y="320" font-size="14" font-weight="600" fill="#f9fafb" text-anchor="end">', formatAmount(params.currentValue), '</text>',
+                '<text x="24" y="345" font-size="14" font-weight="500" fill="#9ca3af">Profit</text>',
+                '<text x="276" y="345" font-size="14" font-weight="600" fill="', profitColor, '" text-anchor="end">', profitSign, formatAmount(profit), '</text>',
+            '</g>'
         ));
     }
 
+    function formatReturnRate(int256 returnRate) internal pure returns (string memory) {
+        if (returnRate >= 0) {
+            uint256 absRate = uint256(returnRate);
+            return string(abi.encodePacked(
+                "+", 
+                (absRate / 100).toString(), 
+                ".", 
+                formatDecimals(absRate % 100), 
+                "%"
+            ));
+        } else {
+            uint256 absRate = uint256(-returnRate);
+            return string(abi.encodePacked(
+                "-", 
+                (absRate / 100).toString(), 
+                ".", 
+                formatDecimals(absRate % 100), 
+                "%"
+            ));
+        }
+    }
 
-    function generateFooter(address manager) internal pure returns (string memory) {
-        return string(abi.encodePacked(
-            '<line x1="60" y1="430" x2="440" y2="430" stroke="#404040" stroke-width="1"/>',
-            '<text x="250" y="470" font-family="SF Pro Display, -apple-system, sans-serif" font-size="12" fill="#6B7280" text-anchor="middle">',
-            'Manager: ', addressToString(manager),
-            '</text>',
-            '<text x="250" y="500" font-family="SF Pro Display, -apple-system, sans-serif" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="middle">',
-            'SteleFund Protocol',
-            '</text>',
-            '<circle cx="250" cy="530" r="6" fill="', getManagerColor(manager), '"/>',
-            '<circle cx="250" cy="530" r="3" fill="#FFFFFF"/>'
-        ));
+
+    function generateFooter() internal pure returns (string memory) {
+        return '<text x="150" y="380" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="12" font-weight="500" fill="#9ca3af" text-anchor="middle">Powered by Stele Protocol</text>';
     }
 
     function formatAmount(uint256 amount) internal pure returns (string memory) {
