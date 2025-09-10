@@ -8,6 +8,8 @@ library NFTSVG {
     using Strings for uint256;
     using Strings for address;
 
+    uint256 constant USDC_DECIMALS = 6;
+
     struct SVGParams {
         uint256 fundId;
         address manager;
@@ -149,20 +151,32 @@ library NFTSVG {
     }
 
     function formatAmount(uint256 amount) internal pure returns (string memory) {
-        if (amount >= 1e24) { // >= 1M tokens (18 decimals)
+        uint256 oneToken = 10 ** USDC_DECIMALS;
+        uint256 millionTokens = oneToken * 1e6;
+        uint256 thousandTokens = oneToken * 1e3;
+        
+        if (amount >= millionTokens) { // >= 1M USDC
+            uint256 whole = amount / millionTokens;
+            uint256 fraction = (amount % millionTokens) / (millionTokens / 100); // 2 decimal places
             return string(abi.encodePacked(
-                '$', (amount / 1e24).toString(), '.', formatDecimals((amount % 1e24) / 1e22), 'M'
+                '$', whole.toString(), '.', formatDecimals(fraction), 'M'
             ));
-        } else if (amount >= 1e21) { // >= 1K tokens
+        } else if (amount >= thousandTokens) { // >= 1K USDC
+            uint256 whole = amount / thousandTokens;
+            uint256 fraction = (amount % thousandTokens) / (thousandTokens / 100); // 2 decimal places
             return string(abi.encodePacked(
-                '$', (amount / 1e21).toString(), '.', formatDecimals((amount % 1e21) / 1e19), 'K'
+                '$', whole.toString(), '.', formatDecimals(fraction), 'K'
             ));
-        } else if (amount >= 1e18) {
-            return string(abi.encodePacked('$', (amount / 1e18).toString()));
+        } else if (amount >= oneToken) { // >= 1 USDC
+            uint256 whole = amount / oneToken;
+            uint256 fraction = (amount % oneToken) / (oneToken / 100); // 2 decimal places
+            return string(abi.encodePacked('$', whole.toString(), '.', formatDecimals(fraction)));
         } else if (amount == 0) {
             return '$0.00';
         } else {
-            return string(abi.encodePacked('$', amount.toString()));
+            // Less than 1 USDC
+            uint256 fraction = (amount * 100) / oneToken; // 2 decimal places
+            return string(abi.encodePacked('$0.', formatDecimals(fraction)));
         }
     }
 
