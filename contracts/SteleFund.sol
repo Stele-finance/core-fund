@@ -380,6 +380,13 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     }
   }
 
+  // Transfer ownership (only owner)
+  function transferOwnership(address newOwner) external onlyOwner {
+    require(newOwner != address(0), "ZA"); // Zero Address
+    owner = newOwner;
+    emit OwnershipTransferred(msg.sender, newOwner);
+  }
+
   // Set Manager NFT Contract (only callable by info contract owner)
   function setManagerNFTContract(address _managerNFTContract) external override onlyOwner {
     require(_managerNFTContract != address(0), "NZ");

@@ -30,18 +30,6 @@ async function main() {
   const steleFundManagerNFTAddress = steleFundManagerNFT.address;
   console.log(`✅ SteleFundManagerNFT deployed at: ${steleFundManagerNFTAddress}\n`);
 
-  // Set NFT contract address in SteleFund
-  console.log("🔗 Setting SteleFundManagerNFT address in SteleFund...");
-  try {
-    const steleFund = await ethers.getContractAt("SteleFund", steleFundAddress);
-    const setNFTTx = await steleFund.setManagerNFTContract(steleFundManagerNFTAddress);
-    await setNFTTx.wait();
-    console.log(`✅ SteleFundManagerNFT address set in SteleFund\n`);
-  } catch (error) {
-    console.log("⚠️  Failed to set NFT address in SteleFund:", error.message);
-    console.log("   Please set the NFT address manually using setManagerNFTContract()\n");
-  }
-
   // Verify setup
   console.log("🔍 Verifying deployment...");
   const fundInfo = await steleFundManagerNFT.steleFundInfo();
@@ -86,8 +74,9 @@ async function main() {
   console.log("\n📝 Next Steps:");
   console.log("1. Verify the SteleFundManagerNFT contract on Arbiscan:");
   console.log(`   npx hardhat verify --network arbitrum ${steleFundManagerNFTAddress} ${steleFundAddress} ${steleFundInfoAddress}`);
-  console.log("2. Fund managers can mint NFTs by calling mintManagerNFT() with their fund parameters");
-  console.log("3. If needed, manually set the NFT address in SteleFund using setManagerNFTContract()");
+  console.log("2. Set the NFT address in SteleFund through governance proposal:");
+  console.log(`   Call setManagerNFTContract(${steleFundManagerNFTAddress})`);
+  console.log("3. After governance approval, fund managers can mint NFTs");
 }
 
 main()

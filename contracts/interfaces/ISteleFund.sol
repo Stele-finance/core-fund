@@ -7,6 +7,7 @@ interface ISteleFund {
   event Swap(uint256 fundId, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut);
   event WithdrawFee(uint256 fundId, address indexed manager, address token, uint256 amount);
   event ManagerNFTContractSet(address indexed managerNFTContract);
+  event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
   struct SwapParams {
     address tokenIn;
