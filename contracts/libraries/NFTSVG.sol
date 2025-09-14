@@ -26,7 +26,7 @@ library NFTSVG {
             generateDefs(),
             generateCard(),
             generateTitle(),
-            generateRankBadge(params.fundId),
+            generateFundIdBadge(params.fundId),
             generateStatsGrid(params),
             generateSeparator(),
             generateInvestmentSummary(params),
@@ -71,7 +71,7 @@ library NFTSVG {
         ));
     }
 
-    function generateRankBadge(uint256 fundId) internal pure returns (string memory) {
+    function generateFundIdBadge(uint256 fundId) internal pure returns (string memory) {
         return string(abi.encodePacked(
             '<rect x="24" y="85" width="80" height="32" rx="16" fill="url(#orangeGradient)"/>',
             '<text x="64" y="103" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="14" font-weight="600" fill="#ffffff" text-anchor="middle">',
