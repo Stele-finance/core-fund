@@ -9,6 +9,7 @@ library NFTSVG {
     using Strings for address;
 
     uint256 constant USDC_DECIMALS = 6;
+    uint256 constant ONE_USDC = 10 ** USDC_DECIMALS;
 
     struct SVGParams {
         uint256 fundId;
@@ -151,9 +152,8 @@ library NFTSVG {
     }
 
     function formatAmount(uint256 amount) internal pure returns (string memory) {
-        uint256 oneToken = 10 ** USDC_DECIMALS;
-        uint256 millionTokens = oneToken * 1e6;
-        uint256 thousandTokens = oneToken * 1e3;
+        uint256 millionTokens = ONE_USDC * 1e6;
+        uint256 thousandTokens = ONE_USDC * 1e3;
         
         if (amount >= millionTokens) { // >= 1M USDC
             uint256 whole = amount / millionTokens;
@@ -167,15 +167,15 @@ library NFTSVG {
             return string(abi.encodePacked(
                 '$', whole.toString(), '.', formatDecimals(fraction), 'K'
             ));
-        } else if (amount >= oneToken) { // >= 1 USDC
-            uint256 whole = amount / oneToken;
-            uint256 fraction = (amount % oneToken) / (oneToken / 100); // 2 decimal places
+        } else if (amount >= ONE_USDC) { // >= 1 USDC
+            uint256 whole = amount / ONE_USDC;
+            uint256 fraction = (amount % ONE_USDC) / (ONE_USDC / 100); // 2 decimal places
             return string(abi.encodePacked('$', whole.toString(), '.', formatDecimals(fraction)));
         } else if (amount == 0) {
             return '$0.00';
         } else {
             // Less than 1 USDC
-            uint256 fraction = (amount * 100) / oneToken; // 2 decimal places
+            uint256 fraction = (amount * 100) / ONE_USDC; // 2 decimal places
             return string(abi.encodePacked('$0.', formatDecimals(fraction)));
         }
     }

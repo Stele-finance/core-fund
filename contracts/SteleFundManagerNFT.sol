@@ -23,6 +23,10 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, ISteleFundManagerNFT {
   using Strings for uint256;
   using NFTSVG for NFTSVG.SVGParams;
 
+  // Constants
+  uint256 constant USDC_DECIMALS = 6;
+  uint256 constant ONE_USDC = 10 ** USDC_DECIMALS;
+
   // State variables
   ISteleFundInfo public steleFundInfo;
   address public steleFundContract;
@@ -240,6 +244,26 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, ISteleFundManagerNFT {
       : string(abi.encodePacked("-", percentageValue));
   }
 
+  // Format TVL for metadata display
+  function formatTVLForMetadata(uint256 tvlAmount) internal pure returns (string memory) {
+    if (tvlAmount == 0) {
+      return "0";
+    }
+
+    // Convert to USDC amount with 2 decimal places
+    uint256 wholePart = tvlAmount / ONE_USDC;
+    uint256 decimalPart = (tvlAmount % ONE_USDC) / (ONE_USDC / 100); // 2 decimal places
+
+    if (decimalPart == 0) {
+      return Strings.toString(wholePart);
+    } else {
+      string memory decimal = decimalPart < 10
+        ? string(abi.encodePacked("0", Strings.toString(decimalPart)))
+        : Strings.toString(decimalPart);
+      return string(abi.encodePacked(Strings.toString(wholePart), ".", decimal));
+    }
+  }
+
 
   // Token URI with on-chain SVG image
   function tokenURI(uint256 tokenId) public view override returns (string memory) {
@@ -292,7 +316,7 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, ISteleFundManagerNFT {
       returnRateValue,
       '},',
       '{"trait_type":"Fund TVL","value":"',
-      Strings.toString(nft.currentTVL / 1e18),
+      formatTVLForMetadata(nft.currentTVL),
       '"}]}'
     ));
 
