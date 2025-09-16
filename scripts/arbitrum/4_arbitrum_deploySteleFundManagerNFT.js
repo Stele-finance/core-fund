@@ -10,7 +10,7 @@ async function main() {
   // Arbitrum addresses - Update with actual deployed addresses from step 3
   const steleFundAddress = "0xc29D843526B857986B1Dd3b51E226307e7c1868b";
   const steleFundInfoAddress = "0xA6585D4aDb191852bf95c260a2e2bEcdC9d44209";
-  const timeLockAddress = "0xa6e62AaaD807E9ffc276c7045bd06F2b064Ca9d7"; // From step 1
+  const timeLockAddress = "0xA2C622621154414AfD89D412027B9cA9dE050FE9"; // From step 1
 
   // Validate addresses
   if (!steleFundInfoAddress) {

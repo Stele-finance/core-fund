@@ -408,7 +408,7 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     // Create mint parameters
     MintParams memory params = MintParams({
       fundId: fundId,
-      fundCreated: block.number, // Use current block as creation time
+      fundCreated: ISteleFundInfo(info).fundCreationBlock(fundId), // Get actual fund creation block
       investment: ISteleFundInfo(info).getFundShare(fundId),
       currentTVL: getPortfolioValueUSD(fundId)
     });

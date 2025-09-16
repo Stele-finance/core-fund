@@ -13,6 +13,7 @@ interface ISteleFundInfo is IToken {
   function manager(uint256 fundId) external view returns (address _manager);
   function managingFund(address _manager) external view returns (uint256 fundId);
   function fundIdCount() external view returns (uint256 fundCount);
+  function fundCreationBlock(uint256 fundId) external view returns (uint256 creationBlock);
 
   function setOwner(address newOwner) external;
   function create() external returns (uint256 fundId);

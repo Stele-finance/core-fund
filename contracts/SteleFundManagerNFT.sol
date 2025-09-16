@@ -201,12 +201,12 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, ISteleFundManagerNFT {
     uint256 absRate = returnRate >= 0 ? uint256(returnRate) : uint256(-returnRate);
     uint256 wholePart = absRate / 100;
     uint256 decimalPart = absRate % 100;
-    
+
     string memory sign = returnRate >= 0 ? "+" : "-";
-    string memory decimal = decimalPart < 10 
+    string memory decimal = decimalPart < 10
       ? string(abi.encodePacked("0", Strings.toString(decimalPart)))
       : Strings.toString(decimalPart);
-      
+
     return string(abi.encodePacked(
       sign,
       Strings.toString(wholePart),
@@ -214,6 +214,30 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, ISteleFundManagerNFT {
       decimal,
       "%"
     ));
+  }
+
+  // Format return rate for NFT metadata (as numeric value with proper sign)
+  function formatReturnRateForMetadata(int256 returnRate) internal pure returns (string memory) {
+    // Convert basis points to percentage with 2 decimals
+    // returnRate is in basis points where 10000 = 100%
+    uint256 absRate = returnRate >= 0 ? uint256(returnRate) : uint256(-returnRate);
+    uint256 wholePart = absRate / 100;
+    uint256 decimalPart = absRate % 100;
+
+    string memory decimal = decimalPart < 10
+      ? string(abi.encodePacked("0", Strings.toString(decimalPart)))
+      : Strings.toString(decimalPart);
+
+    string memory percentageValue = string(abi.encodePacked(
+      Strings.toString(wholePart),
+      ".",
+      decimal
+    ));
+
+    // Return with proper sign for negative values
+    return returnRate >= 0
+      ? percentageValue
+      : string(abi.encodePacked("-", percentageValue));
   }
 
 
@@ -243,6 +267,11 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, ISteleFundManagerNFT {
     
     string memory returnRateText = formatReturnRate(nft.returnRate);
     
+    // Calculate return rate as decimal percentage for display (divide by 100 to convert from basis points to percentage)
+    // returnRate is in basis points (10000 = 100%), we need to convert to percentage with 2 decimals
+    // For display in metadata, we'll show the actual percentage value with decimals
+    string memory returnRateValue = formatReturnRateForMetadata(nft.returnRate);
+
     string memory json = string(abi.encodePacked(
       '{"name":"Fund #',
       Strings.toString(nft.fundId),
@@ -259,9 +288,9 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, ISteleFundManagerNFT {
       '{"trait_type":"Fund ID","value":',
       Strings.toString(nft.fundId),
       '},',
-      '{"trait_type":"Return Rate","value":"',
-      returnRateText,
-      '"},',
+      '{"trait_type":"Return Rate","display_type":"percentage","value":',
+      returnRateValue,
+      '},',
       '{"trait_type":"Fund TVL","value":"',
       Strings.toString(nft.currentTVL / 1e18),
       '"}]}'
