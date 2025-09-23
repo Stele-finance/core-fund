@@ -5,13 +5,12 @@ async function main() {
   console.log("Deploying governance contracts with the account:", deployer.address);
   console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
-  // Mainnet addresses
-  const tokenAddress = "0x71c24377e7f24b6d822C9dad967eBC77C04667b5"; // Existing STELE token
-  const timeLockAddress = "YOUR_TIMELOCK_ADDRESS"; // From step 1
-  
+  // Mainnet
+  const tokenAddress = "0xc4f1E00cCfdF3a068e2e6853565107ef59D96089"; // Stele Token
+  const timeLockAddress = "0x6871e1531FFd9d4689D474d21690035BD43b1333";
   // Governor values
   const QUORUM_PERCENTAGE = 4; // 4%
-  const VOTING_PERIOD = 272; // 1 hour for initial testing period, default : 7 days (50400 blocks)
+  const VOTING_PERIOD = 272; // 1 hour for initial testing period, default : 7 days (2,400,000 blocks)
   const VOTING_DELAY = 1; // 1 block
 
   // Deploy Governor
@@ -24,18 +23,18 @@ async function main() {
     VOTING_PERIOD,
     VOTING_DELAY
   );
-  await governor.deploymentTransaction().wait();
-  const governorAddress = governor.target;
+  await governor.deployed();
+  const governorAddress = await governor.address;
   console.log("SteleFundGovernor deployed to:", governorAddress);
 
   // Setup roles
   console.log("Setting up roles...");
   
   // TimeLock roles to be set up
-  const timeLock = await ethers.getContractAt("TimeLock", timeLockAddress);
+  const timeLock = await ethers.getContractAt("TimeLock", timeLockAddress)
   const proposerRole = await timeLock.PROPOSER_ROLE();
   const executorRole = await timeLock.EXECUTOR_ROLE();
-  const adminRole = await timeLock.DEFAULT_ADMIN_ROLE();
+  const adminRole = await timeLock.TIMELOCK_ADMIN_ROLE();
 
   // Grant proposer role to governor
   const proposerTx = await timeLock.grantRole(proposerRole, governorAddress);
@@ -43,7 +42,7 @@ async function main() {
   console.log("Proposer role granted to governor");
 
   // Grant executor role to everyone (address zero)
-  const executorTx = await timeLock.grantRole(executorRole, ethers.ZeroAddress);
+  const executorTx = await timeLock.grantRole(executorRole, "0x0000000000000000000000000000000000000000");
   await executorTx.wait();
   console.log("Executor role granted to everyone");
 
@@ -58,4 +57,4 @@ async function main() {
 main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
-});
+}); 
