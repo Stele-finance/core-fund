@@ -294,13 +294,11 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
       uint128(trade.amountIn),
       300
     );
-    
+
     uint256 slippage = ISteleFundSetting(setting).maxSlippage();
     uint256 minOutputWithSlippage = PriceOracle.mulDiv(expectedOutput, BASIS_POINTS - slippage, BASIS_POINTS);
-    
-    require(trade.amountOutMinimum >= minOutputWithSlippage, "ESP"); // Excessive slippage protection
-    
-    return trade.amountOutMinimum;
+
+    return minOutputWithSlippage;
   }
   
   // Helper function to execute swap call
