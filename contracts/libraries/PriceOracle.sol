@@ -36,9 +36,9 @@ library PriceOracle {
     function getFeeTiers() private pure returns (uint16[3] memory) {
         return [uint16(500), uint16(3000), uint16(10000)]; // 0.05%, 0.3%, 1%
     }
-    
-    // Default TWAP period (30 minutes)
-    uint32 public constant DEFAULT_TWAP_PERIOD = 1800;
+
+    // Default TWAP period (5 minutes)
+    uint32 public constant DEFAULT_TWAP_PERIOD = 300;
     
     /// @notice Calculate TWAP tick for a given pool and time period
     /// @param pool The Uniswap V3 pool address
