@@ -10,6 +10,7 @@ import "./libraries/PriceOracle.sol";
 import "./libraries/Path.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 interface IWETH9 {
   function deposit() external payable;
@@ -17,16 +18,6 @@ interface IWETH9 {
   function transfer(address to, uint256 value) external returns (bool);
   function transferFrom(address from, address to, uint256 value) external returns (bool);
   function balanceOf(address account) external view returns (uint256);
-}
-
-interface IERC20Minimal {
-  function totalSupply() external view returns (uint256);
-  function balanceOf(address account) external view returns (uint256);
-  function transfer(address recipient, uint256 amount) external returns (bool);
-  function allowance(address owner, address spender) external view returns (uint256);
-  function approve(address spender, uint256 amount) external returns (bool);
-  function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-  function decimals() external view returns (uint8);
 }
 
 interface ISwapRouter {
@@ -180,7 +171,7 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     // Check minimum USD deposit amount
     {
       uint256 depositUSD = PriceOracle.getTokenPriceUSD(uniswapV3Factory, weth9, msg.value, weth9, usdToken);
-      uint8 decimals = IERC20Minimal(usdToken).decimals();
+      uint8 decimals = IERC20Metadata(usdToken).decimals();
       require(decimals <= 18, "ID"); // Prevent overflow
       require(depositUSD >= MIN_DEPOSIT_USD * (10 ** uint256(decimals)), "MDA"); // Minimum $10 deposit
     }
