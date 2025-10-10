@@ -9,7 +9,7 @@ async function main() {
 
   // mainnet addresses
   const steleTokenAddress = "0xc4f1E00cCfdF3a068e2e6853565107ef59D96089"; // Existing STELE token on mainnet
-  const timeLockAddress = "0x970eD260c7B201DAdCa22ea150E419b3EF1572B9"; // From step 1
+  const timeLockAddress = "0x523AeaBc48aFc09c881e9Ff87f9A4FeB63817f69"; // From step 1
   const wethTokenAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"; // mainnet WETH
   const usdcTokenAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"; // mainnet USDC
 

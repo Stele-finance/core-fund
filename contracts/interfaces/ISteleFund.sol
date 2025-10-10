@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.28;
 
 interface ISteleFund {
@@ -9,9 +9,16 @@ interface ISteleFund {
   event ManagerNFTContractSet(address indexed managerNFTContract);
   event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
+  enum SwapType {
+    EXACT_INPUT_SINGLE_HOP,
+    EXACT_INPUT_MULTI_HOP
+  }
+
   struct SwapParams {
+    SwapType swapType;
     address tokenIn;
     address tokenOut;
+    bytes path;
     uint24 fee;
     uint256 amountIn;
     uint256 amountOutMinimum;

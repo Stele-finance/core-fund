@@ -9,7 +9,7 @@ async function main() {
 
   // Arbitrum addresses
   const steleTokenAddress = "0xb4fb28a64c946c909d86388be279f8222fd42599"; // Existing STELE token on Arbitrum
-  const timeLockAddress = "0xcC4eEEA636e1AE5E57a17fCcEfC7bD030C18Ec15"; // From step 1
+  const timeLockAddress = "0x3f7C671A5868e9a3e71d3f56D6513FaAc6c992C8"; // From step 1
   const wethTokenAddress = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"; // Arbitrum WETH
   const usdcTokenAddress = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"; // Arbitrum USDC
 

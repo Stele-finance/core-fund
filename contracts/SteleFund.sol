@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.28;
 
 // Simplified interfaces for Stele integration
@@ -7,7 +7,9 @@ import "./interfaces/ISteleFundInfo.sol";
 import "./interfaces/ISteleFundSetting.sol";
 import "./interfaces/ISteleFundManagerNFT.sol";
 import "./libraries/PriceOracle.sol";
+import "./libraries/Path.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IWETH9 {
   function deposit() external payable;
@@ -27,9 +29,35 @@ interface IERC20Minimal {
   function decimals() external view returns (uint8);
 }
 
+interface ISwapRouter {
+  struct ExactInputSingleParams {
+    address tokenIn;
+    address tokenOut;
+    uint24 fee;
+    address recipient;
+    uint256 deadline;
+    uint256 amountIn;
+    uint256 amountOutMinimum;
+    uint160 sqrtPriceLimitX96;
+  }
+
+  struct ExactInputParams {
+    bytes path;
+    address recipient;
+    uint256 deadline;
+    uint256 amountIn;
+    uint256 amountOutMinimum;
+  }
+
+  function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
+  function exactInput(ExactInputParams calldata params) external payable returns (uint256 amountOut);
+}
+
 
 contract SteleFund is ISteleFund, ReentrancyGuard {
   using PriceOracle for address;
+  using Path for bytes;
+  using SafeERC20 for IERC20;
 
   address public override owner;
 
@@ -66,11 +94,16 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
   }
 
   constructor(
-    address _weth9, 
-    address _setting, 
-    address _info, 
+    address _weth9,
+    address _setting,
+    address _info,
     address _usdToken
   ) {
+    require(_weth9 != address(0), "ZA");
+    require(_setting != address(0), "ZA");
+    require(_info != address(0), "ZA");
+    require(_usdToken != address(0), "ZA");
+
     weth9 = _weth9;
     setting = _setting;
     info = _info;
@@ -172,10 +205,10 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     }
     (uint256 investorShare, uint256 fundShare) = ISteleFundInfo(info).increaseShare(fundId, msg.sender, sharesToMint);
     
-    emit Deposit(fundId, msg.sender, weth9, msg.value, investorShare, fundShare, fundAmount, feeAmount);
-
     // External call LAST
     IWETH9(weth9).deposit{value: msg.value}();
+
+    emit Deposit(fundId, msg.sender, weth9, msg.value, investorShare, fundShare, fundAmount, feeAmount);
   }
 
   receive() external payable {
@@ -211,7 +244,6 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
 
     // Update state FIRST (before external calls)
     (uint256 investorShareAfter, uint256 fundShareAfter) = ISteleFundInfo(info).decreaseShare(fundId, msg.sender, shareToWithdraw);
-    emit Withdraw(fundId, msg.sender, percentage, investorShareAfter, fundShareAfter);
 
     for (uint256 i = 0; i < fundTokens.length; i++) {
       if (fundTokens[i].amount > 0) {
@@ -222,56 +254,137 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
           percentage,
           10000
         );
-        
+
         // Ensure we don't withdraw more than available
         if (tokenShare > fundTokens[i].amount) {
           tokenShare = fundTokens[i].amount;
         }
-        
+
         if (tokenShare > 0) {
           address token = fundTokens[i].token;
-          
+
           // Update state FIRST (before external calls)
           ISteleFundInfo(info).decreaseFundToken(fundId, token, tokenShare);
-          
-          // External calls LAST
+
+          // External calls
           if (token == weth9) {
             IWETH9(weth9).withdraw(tokenShare);
             (bool success, ) = payable(msg.sender).call{value: tokenShare}("");
             require(success, "FW");
           } else {
-            IERC20Minimal(token).transfer(msg.sender, tokenShare);
+            IERC20(token).safeTransfer(msg.sender, tokenShare);
           }
         }
       }
     }
+
+    emit Withdraw(fundId, msg.sender, percentage, investorShareAfter, fundShareAfter);
   }
 
-  // Uniswap V3 Swap Implementation with slippage protection
-  function executeV3Swap(uint256 fundId, SwapParams calldata trade) private {
+  // Get last token from multi-hop path and validate intermediate tokens
+  function getLastTokenFromPath(bytes memory path) private view returns (address) {
+    address tokenOut;
+    uint256 hopCount = 0;
+    uint256 MAX_HOPS = 3;
+
+    while (true) {
+      require(hopCount < MAX_HOPS, "TMP"); // Too Many Pools
+
+      bool hasMultiplePools = path.hasMultiplePools();
+      (, tokenOut, ) = path.decodeFirstPool();
+
+      // Validate intermediate tokens (not first, not last)
+      if (hasMultiplePools && hopCount > 0) {
+        // Intermediate token must be WETH or USDC
+        require(tokenOut == weth9 || tokenOut == usdToken, "IIT"); // Invalid Intermediate Token
+      }
+
+      if (!hasMultiplePools) break;
+      path = path.skipToken();
+      hopCount++;
+    }
+    return tokenOut;
+  }
+
+  // Execute single-hop swap
+  function exactInputSingle(uint256 fundId, SwapParams calldata trade) private {
     require(ISteleFundSetting(setting).isInvestable(trade.tokenOut), "NWT");
     require(trade.amountIn <= ISteleFundInfo(info).getFundTokenAmount(fundId, trade.tokenIn), "NET");
-    
-    // Validate slippage and check token limits
-    _validateSwapParameters(fundId, trade);
-    
-    // Calculate effective minimum output
-    uint256 effectiveMinOutput = _calculateEffectiveMinOutput(trade);
-    
-    // Update state FIRST - decrease the token we're swapping from
-    ISteleFundInfo(info).decreaseFundToken(fundId, trade.tokenIn, trade.amountIn);
 
-    // Execute the swap
-    uint256 amountOut = _executeSwapCall(trade, effectiveMinOutput);
-    
-    // Validate output and update state
-    require(amountOut >= effectiveMinOutput, "SLP");
-    ISteleFundInfo(info).increaseFundToken(fundId, trade.tokenOut, amountOut);
-    emit Swap(fundId, trade.tokenIn, trade.tokenOut, trade.amountIn, amountOut);
+    // Validate token limits
+    _validateSwapParameters(fundId, trade);
+
+    // Approve with SafeERC20 to prevent approve race condition
+    IERC20(trade.tokenIn).safeApprove(swapRouter, 0);
+    IERC20(trade.tokenIn).safeApprove(swapRouter, trade.amountIn);
+
+    ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+      tokenIn: trade.tokenIn,
+      tokenOut: trade.tokenOut,
+      fee: trade.fee,
+      recipient: address(this),
+      deadline: block.timestamp + 300,
+      amountIn: trade.amountIn,
+      amountOutMinimum: trade.amountOutMinimum,
+      sqrtPriceLimitX96: 0
+    });
+
+    uint256 amountOut = ISwapRouter(swapRouter).exactInputSingle(params);
+
+    handleSwap(fundId, trade.tokenIn, trade.tokenOut, trade.amountIn, amountOut);
+  }
+
+  // Execute multi-hop swap
+  function exactInput(uint256 fundId, SwapParams calldata trade) private {
+    address tokenOut = getLastTokenFromPath(trade.path);
+    (address tokenIn, , ) = trade.path.decodeFirstPool();
+
+    require(ISteleFundSetting(setting).isInvestable(tokenOut), "NWT");
+    require(trade.amountIn <= ISteleFundInfo(info).getFundTokenAmount(fundId, tokenIn), "NET");
+
+    // Validate token limits
+    _validateSwapParameters(fundId, SwapParams({
+      swapType: trade.swapType,
+      tokenIn: tokenIn,
+      tokenOut: tokenOut,
+      path: trade.path,
+      fee: 0,
+      amountIn: trade.amountIn,
+      amountOutMinimum: trade.amountOutMinimum
+    }));
+
+    // Approve with SafeERC20 to prevent approve race condition
+    IERC20(tokenIn).safeApprove(swapRouter, 0);
+    IERC20(tokenIn).safeApprove(swapRouter, trade.amountIn);
+
+    ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams({
+      path: trade.path,
+      recipient: address(this),
+      deadline: block.timestamp + 300,
+      amountIn: trade.amountIn,
+      amountOutMinimum: trade.amountOutMinimum
+    });
+
+    uint256 amountOut = ISwapRouter(swapRouter).exactInput(params);
+
+    handleSwap(fundId, tokenIn, tokenOut, trade.amountIn, amountOut);
+  }
+
+  // Handle swap state updates
+  function handleSwap(
+    uint256 fundId,
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn,
+    uint256 amountOut
+  ) private {
+    ISteleFundInfo(info).decreaseFundToken(fundId, tokenIn, amountIn);
+    ISteleFundInfo(info).increaseFundToken(fundId, tokenOut, amountOut);
+    emit Swap(fundId, tokenIn, tokenOut, amountIn, amountOut);
   }
   
   // Helper function to validate swap parameters
-  function _validateSwapParameters(uint256 fundId, SwapParams calldata trade) private view {
+  function _validateSwapParameters(uint256 fundId, SwapParams memory trade) private view {
     // Check maxTokens limit for new tokens
     if (ISteleFundInfo(info).getFundTokenAmount(fundId, trade.tokenOut) == 0) {
       IToken.Token[] memory fundTokens = ISteleFundInfo(info).getFundTokens(fundId);
@@ -284,57 +397,18 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
       require(currentTokenTypes < ISteleFundSetting(setting).maxTokens(), "MAX");
     }
   }
-  
-  // Helper function to calculate effective minimum output
-  function _calculateEffectiveMinOutput(SwapParams calldata trade) private view returns (uint256) {
-    uint256 expectedOutput = PriceOracle.getBestQuote(
-      uniswapV3Factory,
-      trade.tokenIn,
-      trade.tokenOut,
-      uint128(trade.amountIn),
-      300
-    );
 
-    uint256 slippage = ISteleFundSetting(setting).maxSlippage();
-    uint256 minOutputWithSlippage = PriceOracle.mulDiv(expectedOutput, BASIS_POINTS - slippage, BASIS_POINTS);
-
-    return minOutputWithSlippage;
-  }
-  
-  // Helper function to execute swap call
-  function _executeSwapCall(SwapParams calldata trade, uint256 effectiveMinOutput) private returns (uint256) {
-    // Safe approve pattern: reset to 0 first, then set new amount
-    // This prevents issues with tokens like USDT that don't allow changing non-zero allowances
-    IERC20Minimal(trade.tokenIn).approve(swapRouter, 0);
-    IERC20Minimal(trade.tokenIn).approve(swapRouter, trade.amountIn);
-    
-    bytes memory swapCall = abi.encodeWithSignature(
-      "exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))",
-      trade.tokenIn,
-      trade.tokenOut,
-      trade.fee,
-      address(this),
-      block.timestamp + 300,
-      trade.amountIn,
-      effectiveMinOutput,
-      0
-    );
-    
-    uint256 balanceBefore = IERC20Minimal(trade.tokenOut).balanceOf(address(this));
-    (bool success, ) = swapRouter.call(swapCall);
-    require(success, "SWF");
-    
-    return IERC20Minimal(trade.tokenOut).balanceOf(address(this)) - balanceBefore;
-  }
-
-  function swap(uint256 fundId, SwapParams[] calldata trades) 
+  function swap(uint256 fundId, SwapParams[] calldata trades)
     external override onlyManager(msg.sender, fundId) nonReentrant
   {
-    require(trades.length <= MAX_SWAPS_PER_TX, "TMS"); // Too Many Swaps
-    for(uint256 i=0; i<trades.length; i++)
-    {
-      // Use Uniswap V3 SwapRouter for all swaps
-      executeV3Swap(fundId, trades[i]);
+    require(trades.length <= MAX_SWAPS_PER_TX, "TMS");
+
+    for (uint256 i = 0; i < trades.length; i++) {
+      if (trades[i].swapType == SwapType.EXACT_INPUT_SINGLE_HOP) {
+        exactInputSingle(fundId, trades[i]);
+      } else if (trades[i].swapType == SwapType.EXACT_INPUT_MULTI_HOP) {
+        exactInput(fundId, trades[i]);
+      }
     }
   }
 
@@ -362,20 +436,18 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     // Update state FIRST (before external calls)
     bool isSuccess = ISteleFundInfo(info).decreaseFeeToken(fundId, token, amount);
     require(isSuccess, "FD");
-    
-    // This line should not be here - fee tokens are separate from fund tokens
-    // ISteleFundInfo(info).decreaseFundToken(fundId, token, amount);
-    
-    emit WithdrawFee(fundId, msg.sender, token, amount);
-    
-    // External calls LAST
+
+    // External calls BEFORE event emission (CEI pattern)
     if (token == weth9) {
       IWETH9(weth9).withdraw(amount);
       (bool success, ) = payable(msg.sender).call{value: amount}("");
       require(success, "FW");
     } else {
-      IERC20Minimal(token).transfer(msg.sender, amount);
+      IERC20(token).safeTransfer(msg.sender, amount);
     }
+
+    // Event LAST - only emit after successful transfer
+    emit WithdrawFee(fundId, msg.sender, token, amount);
   }
 
   // Transfer ownership (only owner)

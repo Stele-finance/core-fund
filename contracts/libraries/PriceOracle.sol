@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.28;
 
 // Direct Uniswap V3 interfaces
@@ -173,25 +173,18 @@ library PriceOracle {
         address quoteToken,
         uint32 secondsAgo
     ) internal view returns (uint256 quoteAmount) {
-        // Try TWAP first, fallback to spot price if not enough historical data
-        try IUniswapV3Pool(pool).observe(_buildSecondsAgos(secondsAgo)) returns (
-            int56[] memory tickCumulatives,
-            uint160[] memory
-        ) {
-            int56 tickCumulativesDelta = tickCumulatives[1] - tickCumulatives[0];
-            int24 tick = int24(tickCumulativesDelta / int56(uint56(secondsAgo)));
+        // Use TWAP only - no spot price fallback to prevent flash loan attacks
+        uint32[] memory secondsAgos = _buildSecondsAgos(secondsAgo);
+        (int56[] memory tickCumulatives, ) = IUniswapV3Pool(pool).observe(secondsAgos);
 
-            if (tickCumulativesDelta < 0 && (tickCumulativesDelta % int56(uint56(secondsAgo)) != 0)) {
-                tick--;
-            }
+        int56 tickCumulativesDelta = tickCumulatives[1] - tickCumulatives[0];
+        int24 tick = int24(tickCumulativesDelta / int56(uint56(secondsAgo)));
 
-            return getQuoteAtTick(tick, baseAmount, baseToken, quoteToken);
-        } catch {
-            // Fallback to spot price (current tick) if TWAP fails
-            (, int24 tick, , uint16 observationCardinality, , , ) = IUniswapV3Pool(pool).slot0();
-            require(observationCardinality > 0, "NO_LIQ");
-            return getQuoteAtTick(tick, baseAmount, baseToken, quoteToken);
+        if (tickCumulativesDelta < 0 && (tickCumulativesDelta % int56(uint56(secondsAgo)) != 0)) {
+            tick--;
         }
+
+        return getQuoteAtTick(tick, baseAmount, baseToken, quoteToken);
     }
 
     /// @notice Build secondsAgos array for observation
