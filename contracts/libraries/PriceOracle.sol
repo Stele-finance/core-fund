@@ -39,31 +39,6 @@ library PriceOracle {
 
     // Default TWAP period (5 minutes)
     uint32 public constant DEFAULT_TWAP_PERIOD = 300;
-    
-    /// @notice Calculate TWAP tick for a given pool and time period
-    /// @param pool The Uniswap V3 pool address
-    /// @param secondsAgo The time period for TWAP calculation
-    /// @return timeWeightedAverageTick The calculated TWAP tick
-    function getTWAPTick(address pool, uint32 secondsAgo) internal view returns (int24 timeWeightedAverageTick) {
-        if (secondsAgo == 0) {
-            (, timeWeightedAverageTick, , , , , ) = IUniswapV3Pool(pool).slot0();
-            return timeWeightedAverageTick;
-        }
-
-        uint32[] memory secondsAgos = new uint32[](2);
-        secondsAgos[0] = secondsAgo;
-        secondsAgos[1] = 0;
-
-        (int56[] memory tickCumulatives, ) = IUniswapV3Pool(pool).observe(secondsAgos);
-        
-        int56 tickCumulativesDelta = tickCumulatives[1] - tickCumulatives[0];
-        timeWeightedAverageTick = int24(tickCumulativesDelta / int56(uint56(secondsAgo)));
-
-        // Always round to negative infinity
-        if (tickCumulativesDelta < 0 && (tickCumulativesDelta % int56(uint56(secondsAgo)) != 0)) {
-            timeWeightedAverageTick--;
-        }
-    }
 
     /// @notice Convert tick to sqrt price ratio
     /// @param tick The tick value
@@ -198,8 +173,35 @@ library PriceOracle {
         address quoteToken,
         uint32 secondsAgo
     ) internal view returns (uint256 quoteAmount) {
-        int24 tick = getTWAPTick(pool, secondsAgo);
-        return getQuoteAtTick(tick, baseAmount, baseToken, quoteToken);
+        // Try TWAP first, fallback to spot price if not enough historical data
+        try IUniswapV3Pool(pool).observe(_buildSecondsAgos(secondsAgo)) returns (
+            int56[] memory tickCumulatives,
+            uint160[] memory
+        ) {
+            int56 tickCumulativesDelta = tickCumulatives[1] - tickCumulatives[0];
+            int24 tick = int24(tickCumulativesDelta / int56(uint56(secondsAgo)));
+
+            if (tickCumulativesDelta < 0 && (tickCumulativesDelta % int56(uint56(secondsAgo)) != 0)) {
+                tick--;
+            }
+
+            return getQuoteAtTick(tick, baseAmount, baseToken, quoteToken);
+        } catch {
+            // Fallback to spot price (current tick) if TWAP fails
+            (, int24 tick, , uint16 observationCardinality, , , ) = IUniswapV3Pool(pool).slot0();
+            require(observationCardinality > 0, "NO_LIQ");
+            return getQuoteAtTick(tick, baseAmount, baseToken, quoteToken);
+        }
+    }
+
+    /// @notice Build secondsAgos array for observation
+    /// @param secondsAgo TWAP period in seconds
+    /// @return Array with [secondsAgo, 0]
+    function _buildSecondsAgos(uint32 secondsAgo) private pure returns (uint32[] memory) {
+        uint32[] memory secondsAgos = new uint32[](2);
+        secondsAgos[0] = secondsAgo;
+        secondsAgos[1] = 0;
+        return secondsAgos;
     }
 
     /// @notice Get best quote across multiple fee tiers
