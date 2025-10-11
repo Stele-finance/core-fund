@@ -160,10 +160,10 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     return shares;
   }
 
-  fallback() external payable nonReentrant { 
-    // Safe fund ID parsing with validation
+  fallback() external payable nonReentrant {
+    // ETH deposit with fundId (requires 32 bytes calldata)
     uint256 fundId = parseFundId(msg.data);
-    
+
     // Verify fund exists (fundId > 0 already checked in parseFundId)
     require(fundId <= ISteleFundInfo(info).fundIdCount(), "FNE");
     require(ISteleFundInfo(info).isJoined(msg.sender, fundId), "US");
@@ -203,11 +203,7 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
   }
 
   receive() external payable {
-    if (msg.sender == weth9) {
-      // when call IWETH9(weth9).withdraw(amount) in this contract
-    } else {
-      // when deposit ETH with no data
-    }
+    require(msg.sender == weth9, "OW"); // Only WETH unwrap
   }
 
   function withdraw(uint256 fundId, uint256 percentage) external payable override nonReentrant {
@@ -305,6 +301,9 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     // Validate token limits
     _validateSwapParameters(fundId, trade);
 
+    // Calculate minimum output with slippage protection (ignores Manager's input)
+    uint256 minOutput = _calculateMinOutput(trade.tokenIn, trade.tokenOut, trade.amountIn);
+
     // Approve with SafeERC20 to prevent approve race condition
     IERC20(trade.tokenIn).safeApprove(swapRouter, 0);
     IERC20(trade.tokenIn).safeApprove(swapRouter, trade.amountIn);
@@ -314,9 +313,9 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
       tokenOut: trade.tokenOut,
       fee: trade.fee,
       recipient: address(this),
-      deadline: block.timestamp + 300,
+      deadline: block.timestamp + 180, // 3 minutes deadline
       amountIn: trade.amountIn,
-      amountOutMinimum: trade.amountOutMinimum,
+      amountOutMinimum: minOutput, // Use calculated minOutput instead of trade.amountOutMinimum
       sqrtPriceLimitX96: 0
     });
 
@@ -344,6 +343,9 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
       amountOutMinimum: trade.amountOutMinimum
     }));
 
+    // Calculate minimum output with slippage protection (ignores Manager's input)
+    uint256 minOutput = _calculateMinOutput(tokenIn, tokenOut, trade.amountIn);
+
     // Approve with SafeERC20 to prevent approve race condition
     IERC20(tokenIn).safeApprove(swapRouter, 0);
     IERC20(tokenIn).safeApprove(swapRouter, trade.amountIn);
@@ -351,9 +353,9 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams({
       path: trade.path,
       recipient: address(this),
-      deadline: block.timestamp + 300,
+      deadline: block.timestamp + 180, // 3 minutes deadline
       amountIn: trade.amountIn,
-      amountOutMinimum: trade.amountOutMinimum
+      amountOutMinimum: minOutput // Use calculated minOutput instead of trade.amountOutMinimum
     });
 
     uint256 amountOut = ISwapRouter(swapRouter).exactInput(params);
@@ -387,6 +389,28 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
       }
       require(currentTokenTypes < ISteleFundSetting(setting).maxTokens(), "MAX");
     }
+  }
+
+  // Calculate minimum output with slippage protection
+  function _calculateMinOutput(
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn
+  ) private view returns (uint256) {
+    // Get expected output from oracle (TWAP price)
+    // Convert tokenIn amount to ETH
+    uint256 amountInETH = PriceOracle.getTokenPriceETH(uniswapV3Factory, tokenIn, weth9, amountIn);
+
+    // Convert ETH to tokenOut
+    uint256 expectedOutput = PriceOracle.getTokenPriceETH(uniswapV3Factory, weth9, tokenOut, amountInETH);
+
+    // Get max slippage from settings (e.g., 300 = 3%)
+    uint256 maxSlippage = ISteleFundSetting(setting).maxSlippage();
+
+    // Calculate minimum acceptable output: expectedOutput * (10000 - maxSlippage) / 10000
+    uint256 minOutput = PriceOracle.mulDiv(expectedOutput, 10000 - maxSlippage, 10000);
+
+    return minOutput;
   }
 
   function swap(uint256 fundId, SwapParams[] calldata trades)
