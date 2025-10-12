@@ -8,14 +8,6 @@ interface IUniswapV3Factory {
 }
 
 interface IUniswapV3Pool {
-    function observe(uint32[] calldata secondsAgos)
-        external
-        view
-        returns (
-            int56[] memory tickCumulatives, 
-            uint160[] memory secondsPerLiquidityCumulativeX128s
-        );
-    
     function slot0() external view returns (
         uint160 sqrtPriceX96,
         int24 tick,
@@ -28,17 +20,14 @@ interface IUniswapV3Pool {
 }
 
 /// @title Price Oracle Library
-/// @notice Library for calculating Time-Weighted Average Prices using Uniswap V3
-/// @dev Provides functions for TWAP calculation, tick math, and price conversion
+/// @notice Library for calculating Spot Prices using Uniswap V3
+/// @dev Provides functions for spot price calculation, tick math, and price conversion
 library PriceOracle {
-    
+
     // Standard Uniswap V3 fee tiers - using function to return array
     function getFeeTiers() private pure returns (uint16[3] memory) {
         return [uint16(500), uint16(3000), uint16(10000)]; // 0.05%, 0.3%, 1%
     }
-
-    // Default TWAP period (5 minutes)
-    uint32 public constant DEFAULT_TWAP_PERIOD = 300;
 
     /// @notice Convert tick to sqrt price ratio
     /// @param tick The tick value
@@ -177,16 +166,6 @@ library PriceOracle {
         return getQuoteAtTick(tick, baseAmount, baseToken, quoteToken);
     }
 
-    /// @notice Build secondsAgos array for observation
-    /// @param secondsAgo TWAP period in seconds
-    /// @return Array with [secondsAgo, 0]
-    function _buildSecondsAgos(uint32 secondsAgo) private pure returns (uint32[] memory) {
-        uint32[] memory secondsAgos = new uint32[](2);
-        secondsAgos[0] = secondsAgo;
-        secondsAgos[1] = 0;
-        return secondsAgos;
-    }
-
     /// @notice Get best quote across multiple fee tiers using spot price
     /// @param factory The Uniswap V3 factory address
     /// @param tokenA First token address
@@ -197,8 +176,7 @@ library PriceOracle {
         address factory,
         address tokenA,
         address tokenB,
-        uint128 amountIn,
-        uint32 /* secondsAgo */
+        uint128 amountIn
     ) internal view returns (uint256 bestQuote) {
         bestQuote = 0;
         
@@ -218,7 +196,7 @@ library PriceOracle {
         }
     }
 
-    /// @notice Get ETH price in USD using TWAP
+    /// @notice Get ETH price in USD using spot price
     /// @param factory The Uniswap V3 factory address
     /// @param weth9 WETH9 token address
     /// @param usdToken USD token address (e.g., USDC)
@@ -234,14 +212,13 @@ library PriceOracle {
             factory,
             weth9,
             usdToken,
-            uint128(1e18), // 1 ETH
-            DEFAULT_TWAP_PERIOD
+            uint128(1e18) // 1 ETH
         );
-        
+
         return quote > 0 ? quote : fallbackPrice;
     }
 
-    /// @notice Get token price in ETH using TWAP
+    /// @notice Get token price in ETH using spot price
     /// @param factory The Uniswap V3 factory address
     /// @param token Token address
     /// @param weth9 WETH9 token address
@@ -261,12 +238,11 @@ library PriceOracle {
             factory,
             token,
             weth9,
-            uint128(amount),
-            DEFAULT_TWAP_PERIOD
+            uint128(amount)
         );
     }
-    
-    /// @notice Get token price in USD using TWAP
+
+    /// @notice Get token price in USD using spot price
     /// @param factory The Uniswap V3 factory address
     /// @param token Token address
     /// @param amount Token amount
