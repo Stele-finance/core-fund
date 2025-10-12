@@ -159,30 +159,20 @@ library PriceOracle {
         }
     }
 
-    /// @notice Get quote from pool using TWAP
+    /// @notice Get quote from pool using spot price
     /// @param pool The pool address
     /// @param baseAmount The base amount
     /// @param baseToken The base token address
     /// @param quoteToken The quote token address
-    /// @param secondsAgo TWAP period in seconds
     /// @return quoteAmount The calculated quote amount
     function getQuoteFromPool(
         address pool,
         uint128 baseAmount,
         address baseToken,
-        address quoteToken,
-        uint32 secondsAgo
+        address quoteToken
     ) internal view returns (uint256 quoteAmount) {
-        // Use TWAP only - no spot price fallback to prevent flash loan attacks
-        uint32[] memory secondsAgos = _buildSecondsAgos(secondsAgo);
-        (int56[] memory tickCumulatives, ) = IUniswapV3Pool(pool).observe(secondsAgos);
-
-        int56 tickCumulativesDelta = tickCumulatives[1] - tickCumulatives[0];
-        int24 tick = int24(tickCumulativesDelta / int56(uint56(secondsAgo)));
-
-        if (tickCumulativesDelta < 0 && (tickCumulativesDelta % int56(uint56(secondsAgo)) != 0)) {
-            tick--;
-        }
+        // Use spot price (like Uniswap SwapRouter)
+        (, int24 tick, , , , , ) = IUniswapV3Pool(pool).slot0();
 
         return getQuoteAtTick(tick, baseAmount, baseToken, quoteToken);
     }
@@ -197,19 +187,18 @@ library PriceOracle {
         return secondsAgos;
     }
 
-    /// @notice Get best quote across multiple fee tiers
+    /// @notice Get best quote across multiple fee tiers using spot price
     /// @param factory The Uniswap V3 factory address
     /// @param tokenA First token address
-    /// @param tokenB Second token address  
+    /// @param tokenB Second token address
     /// @param amountIn Input amount
-    /// @param secondsAgo TWAP period in seconds
     /// @return bestQuote The best quote found across all pools
     function getBestQuote(
         address factory,
         address tokenA,
         address tokenB,
         uint128 amountIn,
-        uint32 secondsAgo
+        uint32 /* secondsAgo */
     ) internal view returns (uint256 bestQuote) {
         bestQuote = 0;
         
@@ -222,7 +211,7 @@ library PriceOracle {
 
             // Note: Direct call without try-catch since we're in a library
             // The calling contract should handle exceptions
-            uint256 quote = getQuoteFromPool(pool, amountIn, tokenA, tokenB, secondsAgo);
+            uint256 quote = getQuoteFromPool(pool, amountIn, tokenA, tokenB);
             if (quote > bestQuote) {
                 bestQuote = quote;
             }

@@ -315,7 +315,7 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
       recipient: address(this),
       deadline: block.timestamp + 180, // 3 minutes deadline
       amountIn: trade.amountIn,
-      amountOutMinimum: minOutput, // Use calculated minOutput instead of trade.amountOutMinimum
+      amountOutMinimum: minOutput, // Use calculated minOutput
       sqrtPriceLimitX96: 0
     });
 
@@ -355,7 +355,7 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
       recipient: address(this),
       deadline: block.timestamp + 180, // 3 minutes deadline
       amountIn: trade.amountIn,
-      amountOutMinimum: minOutput // Use calculated minOutput instead of trade.amountOutMinimum
+      amountOutMinimum: minOutput // Use calculated minOutput
     });
 
     uint256 amountOut = ISwapRouter(swapRouter).exactInput(params);
@@ -391,17 +391,14 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     }
   }
 
-  // Calculate minimum output with slippage protection
+  // Calculate minimum output with slippage protection using spot price
   function _calculateMinOutput(
     address tokenIn,
     address tokenOut,
     uint256 amountIn
   ) private view returns (uint256) {
-    // Get expected output from oracle (TWAP price)
-    // Convert tokenIn amount to ETH
+    // Get expected output from oracle (spot price)
     uint256 amountInETH = PriceOracle.getTokenPriceETH(uniswapV3Factory, tokenIn, weth9, amountIn);
-
-    // Convert ETH to tokenOut
     uint256 expectedOutput = PriceOracle.getTokenPriceETH(uniswapV3Factory, weth9, tokenOut, amountInETH);
 
     // Get max slippage from settings (e.g., 300 = 3%)
