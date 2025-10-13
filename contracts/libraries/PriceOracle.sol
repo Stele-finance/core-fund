@@ -197,16 +197,15 @@ library PriceOracle {
     }
 
     /// @notice Get ETH price in USD using spot price
+    /// @dev Reverts if no valid price is available
     /// @param factory The Uniswap V3 factory address
     /// @param weth9 WETH9 token address
     /// @param usdToken USD token address (e.g., USDC)
-    /// @param fallbackPrice Fallback price if no pools available
     /// @return ethPriceUSD ETH price in USD
     function getETHPriceUSD(
         address factory,
         address weth9,
-        address usdToken,
-        uint256 fallbackPrice
+        address usdToken
     ) internal view returns (uint256 ethPriceUSD) {
         uint256 quote = getBestQuote(
             factory,
@@ -215,7 +214,8 @@ library PriceOracle {
             uint128(1e18) // 1 ETH
         );
 
-        return quote > 0 ? quote : fallbackPrice;
+        require(quote > 0, "No valid ETH price available");
+        return quote;
     }
 
     /// @notice Get token price in ETH using spot price
@@ -258,7 +258,7 @@ library PriceOracle {
     ) internal view returns (uint256 usdAmount) {
         if (token == weth9) {
             // ETH to USD directly
-            uint256 ethPriceUSD = getETHPriceUSD(factory, weth9, usdToken, 3000 * 1e6);
+            uint256 ethPriceUSD = getETHPriceUSD(factory, weth9, usdToken);
             return precisionMul(amount, ethPriceUSD, 1e18);
         } else if (token == usdToken) {
             // USD token (USDC) - return as is
@@ -267,8 +267,8 @@ library PriceOracle {
             // Other tokens: token -> ETH -> USD
             uint256 ethAmount = getTokenPriceETH(factory, token, weth9, amount);
             if (ethAmount == 0) return 0;
-            
-            uint256 ethPriceUSD = getETHPriceUSD(factory, weth9, usdToken, 3000 * 1e6);
+
+            uint256 ethPriceUSD = getETHPriceUSD(factory, weth9, usdToken);
             return precisionMul(ethAmount, ethPriceUSD, 1e18);
         }
     }
