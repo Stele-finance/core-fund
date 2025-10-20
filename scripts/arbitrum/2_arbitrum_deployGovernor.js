@@ -7,7 +7,7 @@ async function main() {
 
   // Arbitrum
   const tokenAddress = "0xB4fB28A64C946c909D86388Be279F8222Fd42599"; // Stele Token
-  const timeLockAddress = "0x5cA240Efbf2F58cD83f423CB2138D891ABcc7DFa";
+  const timeLockAddress = "0x1ea89dC5FD40F5c15313b77E12833563F6C33730";
   // Governor values
   const QUORUM_PERCENTAGE = 4; // 4%
   const VOTING_PERIOD = 272; // 1 hour for initial testing period, default : 7 days (2,400,000 blocks)

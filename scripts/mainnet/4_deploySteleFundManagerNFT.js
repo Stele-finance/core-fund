@@ -8,9 +8,9 @@ async function main() {
   console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
   // mainnet addresses - Update with actual deployed addresses from step 3
-  const steleFundAddress = "0xBab56c9a56144364ea8FDD6d4B3BD61898Ea9581";
-  const steleFundInfoAddress = "0x8fef1Adf80AeFC547478A4deCD5079EE2F925881";
-  const timeLockAddress = "0xbD7272B7162cE5a0311Fcea35c0a0C6FF1b6D48B"; // From step 1
+  const steleFundAddress = "0x7D38435F9D78DFc9FDe6E9547C7f96F57D6430d3";
+  const steleFundInfoAddress = "0x331E2988f235471C7b8B4aa991962A72d8C02b5A";
+  const timeLockAddress = "0x86e3Ee34d75D1B688D2a061B53B686299bcF3355"; // From step 1
 
   // Validate addresses
   if (!steleFundInfoAddress) {

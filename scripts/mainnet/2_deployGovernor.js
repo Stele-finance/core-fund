@@ -7,7 +7,7 @@ async function main() {
 
   // Mainnet
   const tokenAddress = "0xc4f1E00cCfdF3a068e2e6853565107ef59D96089"; // Stele Token
-  const timeLockAddress = "0xbD7272B7162cE5a0311Fcea35c0a0C6FF1b6D48B";
+  const timeLockAddress = "0x86e3Ee34d75D1B688D2a061B53B686299bcF3355";
   // Governor values
   const QUORUM_PERCENTAGE = 4; // 4%
   const VOTING_PERIOD = 272; // 1 hour for initial testing period, default : 7 days (50400 blocks)

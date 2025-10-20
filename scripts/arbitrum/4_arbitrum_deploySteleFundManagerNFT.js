@@ -8,9 +8,9 @@ async function main() {
   console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
   // Arbitrum addresses - Update with actual deployed addresses from step 3
-  const steleFundAddress = "0x250850889D5F46868D1b94fD17911C0F6E1a27A4";
-  const steleFundInfoAddress = "0xf77dF77F664D0d725a2895EC41cc963039dCf6e1";
-  const timeLockAddress = "0x5cA240Efbf2F58cD83f423CB2138D891ABcc7DFa"; // From step 1
+  const steleFundAddress = "0x98D5F6d65486782b05b89130D930be780D12f612";
+  const steleFundInfoAddress = "0xa015EA73fb30eefFA7F076E26B0ec1340EB2d74F";
+  const timeLockAddress = "0x1ea89dC5FD40F5c15313b77E12833563F6C33730"; // From step 1
 
   // Validate addresses
   if (!steleFundInfoAddress) {
