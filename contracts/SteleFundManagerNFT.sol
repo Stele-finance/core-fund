@@ -90,13 +90,14 @@ contract SteleFundManagerNFT is ERC721, ERC721Enumerable, ISteleFundManagerNFT {
     userTokens[manager].push(tokenId);
     
     emit ManagerNFTMinted(
-      tokenId, 
-      params.fundId, 
+      tokenId,
+      params.fundId,
       manager,
       params.investment,
       params.currentTVL,
       returnRate,
-      params.fundCreated
+      params.fundCreated,
+      block.number
     );
     
     return tokenId;

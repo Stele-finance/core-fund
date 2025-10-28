@@ -12,13 +12,14 @@ struct MintParams {
 interface ISteleFundManagerNFT {
   // Events
   event ManagerNFTMinted(
-    uint256 indexed tokenId, 
-    uint256 indexed fundId, 
+    uint256 indexed tokenId,
+    uint256 indexed fundId,
     address indexed manager,
     uint256 investment,
     uint256 currentTVL,
     int256 returnRate,
-    uint256 fundCreated
+    uint256 fundCreated,
+    uint256 mintedAt
   );
 
   event TransferAttemptBlocked(uint256 indexed tokenId, address indexed from, address indexed to, string reason);
