@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/governance/Governor.sol";
@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
 
-contract SteleGovernor is 
+contract SteleFundGovernor is 
     Governor, 
     GovernorSettings, 
     GovernorCountingSimple, 
@@ -23,7 +23,7 @@ contract SteleGovernor is
         uint256 _votingPeriod,
         uint256 _votingDelay
     )
-        Governor("SteleGovernor")
+        Governor("SteleFundGovernor")
         GovernorSettings(
           _votingDelay, /* 1 block */ // voting delay
           _votingPeriod, // 45818, /* 1 week */ // voting period

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.28;
 
 import './base/Token.sol';
@@ -8,9 +8,12 @@ contract SteleFundInfo is Token, ISteleFundInfo {
   address public override owner;
   mapping(uint256 => address) public override manager;                    // manager[fundId]
   uint256 public override fundIdCount = 0;
-  
+
   // Maximum funds per investor to prevent DoS attacks
   uint256 public constant MAX_FUNDS_PER_INVESTOR = 100;
+
+  // Fund creation block mapping
+  mapping(uint256 => uint256) public fundCreationBlock;                   // fundCreationBlock[fundId]
 
   // fundId
   mapping(address => uint256) public override managingFund;               // managingFund[manager]
@@ -86,6 +89,7 @@ contract SteleFundInfo is Token, ISteleFundInfo {
     investingFunds[msg.sender][fundCount] = fundId;
     investingFundCount[msg.sender] += 1;
     manager[fundId] = msg.sender;
+    fundCreationBlock[fundId] = block.number; // Store fund creation block
     emit Create(fundId, msg.sender);
   }
 

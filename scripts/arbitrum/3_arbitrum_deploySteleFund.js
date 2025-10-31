@@ -8,33 +8,32 @@ async function main() {
   console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
   // Arbitrum addresses
-  const steleTokenAddress = "0x08C9c9EE6F161c6056060BF6AC7fE85e38638619"; // Existing STELE token on Arbitrum
-  const timeLockAddress = "0x70Cc91A2B7F91efdb3B756512325AF978bda60F3"; // From step 1
+  const steleTokenAddress = "0xb4fb28a64c946c909d86388be279f8222fd42599"; // Existing STELE token on Arbitrum
+  const timeLockAddress = "0x1ea89dC5FD40F5c15313b77E12833563F6C33730"; // From step 1
   const wethTokenAddress = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"; // Arbitrum WETH
   const usdcTokenAddress = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"; // Arbitrum USDC
-  
 
   console.log(`🎯 Stele Token: ${steleTokenAddress}`);
   console.log(`💰 WETH: ${wethTokenAddress}`);
   console.log(`🏛️ TimeLock: ${timeLockAddress}`);
 
   // Step 1: Deploy SteleFundSetting
-  console.log("📝 Step 1: Deploying SteleFundSetting on Arbitrum...");
+  console.log("📝 Step 2: Deploying SteleFundSetting on Arbitrum...");
   const SteleFundSetting = await ethers.getContractFactory("SteleFundSetting");
   const steleFundSetting = await SteleFundSetting.deploy(
     wethTokenAddress,
     usdcTokenAddress
   );
-  await steleFundSetting.waitForDeployment();
-  const steleFundSettingAddress = await steleFundSetting.getAddress();
-  console.log(`✅ SteleFundSetting deployed at: ${steleFundSettingAddress}\n`);
+  await steleFundSetting.deployed();
+  const steleFundSettingAddress = await steleFundSetting.address;
+  console.log("✅ SteleFundSetting deployed to:", steleFundSettingAddress);
 
   // Step 2: Deploy SteleFundInfo
   console.log("📊 Step 2: Deploying SteleFundInfo on Arbitrum...");
   const SteleFundInfo = await ethers.getContractFactory("SteleFundInfo");
   const steleFundInfo = await SteleFundInfo.deploy();
-  await steleFundInfo.waitForDeployment();
-  const steleFundInfoAddress = await steleFundInfo.getAddress();
+  await steleFundInfo.deployed();
+  const steleFundInfoAddress = await steleFundInfo.address;
   console.log(`✅ SteleFundInfo deployed at: ${steleFundInfoAddress}\n`);
 
   // Step 3: Deploy SteleFund
@@ -46,8 +45,8 @@ async function main() {
     steleFundInfoAddress,
     usdcTokenAddress
   );
-  await steleFund.waitForDeployment();
-  const steleFundAddress = await steleFund.getAddress();
+  await steleFund.deployed();
+  const steleFundAddress = await steleFund.address;
   console.log(`✅ SteleFund deployed at: ${steleFundAddress}\n`);
 
   // Step 4: Set SteleFundInfo owner to SteleFund
@@ -107,9 +106,9 @@ async function main() {
       owner: currentOwner
     },
     transactions: {
-      steleFundSetting: steleFundSetting.deploymentTransaction().hash,
-      steleFund: steleFund.deploymentTransaction().hash,
-      steleFundInfo: steleFundInfo.deploymentTransaction().hash
+      steleFundSetting: steleFundSetting.deploymentTransaction,
+      steleFund: steleFund.deploymentTransaction,
+      steleFundInfo: steleFundInfo.deploymentTransaction
     }
   };
 
@@ -118,8 +117,7 @@ async function main() {
 }
 
 main()
-  .then(() => process.exit(0))
+  .then(() => console.log("✅ Deployment completed successfully"))
   .catch((error) => {
     console.error("❌ Deployment failed:", error);
-    process.exit(1);
   });

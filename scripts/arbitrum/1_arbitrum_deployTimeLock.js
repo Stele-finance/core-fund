@@ -2,7 +2,7 @@ const { ethers } = require("hardhat");
 
 async function main() {
   const [deployer] = await ethers.getSigners();
-  console.log("Deploying TimeLock contract on Arbitrum with the account:", deployer.address);
+  console.log("Deploying governance contracts with the account:", deployer.address);
   console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
   // TimeLock values
@@ -11,7 +11,7 @@ async function main() {
   const executors = [];
   
   // Deploy TimeLock
-  console.log("Deploying TimeLock on Arbitrum...");
+  console.log("Deploying TimeLock...");
   const TimeLock = await ethers.getContractFactory("TimeLock");
   const timeLock = await TimeLock.deploy(
     MIN_DELAY,
@@ -19,12 +19,12 @@ async function main() {
     executors,
     deployer.address // Admin
   );
-  await timeLock.deploymentTransaction().wait();
-  const timeLockAddress = timeLock.target;
+  await timeLock.deployed();
+  const timeLockAddress = await timeLock.address;
   console.log("TimeLock deployed to:", timeLockAddress);
 }
 
 main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
-});
+}); 
