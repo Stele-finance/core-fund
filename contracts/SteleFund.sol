@@ -100,7 +100,19 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     address _uni,
     address _link
   ) {
+    require(_info != address(0), "ZA");
+    require(_weth9 != address(0), "ZA");
+    require(_usdToken != address(0), "ZA");
+    require(_wbtc != address(0), "ZA");
+    require(_uni != address(0), "ZA");
+    require(_link != address(0), "ZA");
+
     info = _info;
+    weth9 = _weth9;
+    usdToken = _usdToken;
+    wbtc = _wbtc;
+    uni = _uni;
+    link = _link;
 
     isInvestable[_weth9] = true;
     isInvestable[_usdToken] = true;
