@@ -4,7 +4,6 @@ pragma solidity ^0.8.28;
 // Simplified interfaces for Stele integration
 import "./interfaces/ISteleFund.sol";
 import "./interfaces/ISteleFundInfo.sol";
-import "./interfaces/ISteleFundSetting.sol";
 import "./interfaces/ISteleFundManagerNFT.sol";
 import "./libraries/PriceOracle.sol";
 import "./libraries/Path.sol";
@@ -68,11 +67,20 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
   // Maximum swaps per transaction to prevent DoS
   uint256 private constant MAX_SWAPS_PER_TX = 10;
 
-  address public weth9;
-  address public setting;
   address public info;
-  address public usdToken; // USDC address for price calculation
   address public managerNFTContract; // SteleFundManagerNFT contract address
+
+  uint256 public override managerFee = 100; // 100 : 1%
+  uint256 public override maxSlippage = 300; // Maximum 3% slippage allowed (300 = 3%)
+
+  address public weth9;
+  address public usdToken;
+  address public wbtc;
+  address public uni;
+  address public link;
+
+  mapping(address => bool) public override isInvestable;
+
 
   modifier onlyOwner() {
       require(msg.sender == owner, 'NO');
@@ -85,20 +93,27 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
   }
 
   constructor(
-    address _weth9,
-    address _setting,
     address _info,
-    address _usdToken
+    address _weth9,
+    address _usdToken,
+    address _wbtc,
+    address _uni,
+    address _link
   ) {
-    require(_weth9 != address(0), "ZA");
-    require(_setting != address(0), "ZA");
-    require(_info != address(0), "ZA");
-    require(_usdToken != address(0), "ZA");
-
-    weth9 = _weth9;
-    setting = _setting;
     info = _info;
-    usdToken = _usdToken;
+
+    isInvestable[_weth9] = true;
+    isInvestable[_usdToken] = true;
+    isInvestable[_wbtc] = true;
+    isInvestable[_uni] = true;
+    isInvestable[_link] = true;
+
+    emit AddToken(_weth9);
+    emit AddToken(_usdToken);
+    emit AddToken(_wbtc);
+    emit AddToken(_uni);
+    emit AddToken(_link);
+
     owner = msg.sender;
   }
 
@@ -180,8 +195,7 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     uint256 feeAmount = 0;
     uint256 fundAmount = msg.value;
     if (msg.sender != ISteleFundInfo(info).manager(fundId)) {
-      uint256 feeRate = ISteleFundSetting(setting).managerFee();
-      feeAmount = PriceOracle.mulDiv(msg.value, feeRate, BASIS_POINTS);
+      feeAmount = PriceOracle.mulDiv(msg.value, managerFee, BASIS_POINTS);
       fundAmount = msg.value - feeAmount;
     }
     
@@ -295,7 +309,7 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
 
   // Execute single-hop swap
   function exactInputSingle(uint256 fundId, SwapParams calldata trade) private {
-    require(ISteleFundSetting(setting).isInvestable(trade.tokenOut), "NWT");
+    require(isInvestable[trade.tokenOut], "NWT");
     require(trade.amountIn <= ISteleFundInfo(info).getFundTokenAmount(fundId, trade.tokenIn), "NET");
 
     // Calculate minimum output with slippage protection (ignores Manager's input)
@@ -326,7 +340,7 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     address tokenOut = getLastTokenFromPath(trade.path);
     (address tokenIn, , ) = trade.path.decodeFirstPool();
 
-    require(ISteleFundSetting(setting).isInvestable(tokenOut), "NWT");
+    require(isInvestable[tokenOut], "NWT");
     require(trade.amountIn <= ISteleFundInfo(info).getFundTokenAmount(fundId, tokenIn), "NET");
 
     // Calculate minimum output with slippage protection (ignores Manager's input)
@@ -371,9 +385,6 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     // Get expected output from oracle (spot price)
     uint256 amountInETH = PriceOracle.getTokenPriceETH(uniswapV3Factory, tokenIn, weth9, amountIn);
     uint256 expectedOutput = PriceOracle.getTokenPriceETH(uniswapV3Factory, weth9, tokenOut, amountInETH);
-
-    // Get max slippage from settings (e.g., 300 = 3%)
-    uint256 maxSlippage = ISteleFundSetting(setting).maxSlippage();
 
     // Calculate minimum acceptable output: expectedOutput * (10000 - maxSlippage) / 10000
     uint256 minOutput = PriceOracle.mulDiv(expectedOutput, 10000 - maxSlippage, 10000);

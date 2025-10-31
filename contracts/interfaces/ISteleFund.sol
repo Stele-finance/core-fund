@@ -8,6 +8,11 @@ interface ISteleFund {
   event WithdrawFee(uint256 fundId, address indexed manager, address token, uint256 amount);
   event ManagerNFTContractSet(address indexed managerNFTContract);
   event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+  event AddToken(address indexed token);
+
+  function managerFee() external view returns (uint256);
+  function maxSlippage() external view returns (uint256);
+  function isInvestable(address _token) external view returns (bool);
 
   enum SwapType {
     EXACT_INPUT_SINGLE_HOP,
