@@ -8,8 +8,8 @@ async function main() {
   console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
   // Arbitrum addresses - Update with actual deployed addresses from step 3
-  const steleFundAddress = "0x98D5F6d65486782b05b89130D930be780D12f612";
-  const steleFundInfoAddress = "0xa015EA73fb30eefFA7F076E26B0ec1340EB2d74F";
+  const steleFundAddress = "0xB3Bb5c1a546b161Ff4d1fCb90cee66fcb71992Ce";
+  const steleFundInfoAddress = "0x3E601A11EA83372a3C092CA46f6E4bFa9562B2e3";
 
   // Validate addresses
   if (!steleFundInfoAddress) {
@@ -38,7 +38,7 @@ async function main() {
   // Step 3: Transfer SteleFund ownership to Zero Address
   console.log("🏛️ Step 3: Transferring SteleFund ownership to Zero Address...");
   try {
-    const ownershipTx = await steleFund.transferOwnership(ethers.constants.AddressZero);
+    const ownershipTx = await steleFund.renounceOwnership(ethers.constants.AddressZero);
     await ownershipTx.wait();
     console.log(`✅ SteleFund ownership transferred to: ${ethers.constants.AddressZero}\n`);
   } catch (error) {

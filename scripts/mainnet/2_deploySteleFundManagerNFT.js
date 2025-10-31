@@ -38,7 +38,7 @@ async function main() {
   // Step 3: Transfer SteleFund ownership to Zero Address
   console.log("🏛️ Step 3: Transferring SteleFund ownership to Zero Address...");
   try {
-    const ownershipTx = await steleFund.transferOwnership(ethers.constants.AddressZero);
+    const ownershipTx = await steleFund.renounceOwnership(ethers.constants.AddressZero);
     await ownershipTx.wait();
     console.log(`✅ SteleFund ownership transferred to: ${ethers.constants.AddressZero}\n`);
   } catch (error) {
