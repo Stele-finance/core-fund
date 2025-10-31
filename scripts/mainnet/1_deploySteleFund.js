@@ -53,7 +53,7 @@ async function main() {
   console.log("🔍 Step 5: Verifying deployment...");
   const infoOwner = await steleFundInfo.owner();
   const weth9 = await steleFund.weth9();
-  const usdc = await steleFund.usdc();
+  const usdc = await steleFund.usdToken();
   const wbtc = await steleFund.wbtc();
   const uni = await steleFund.uni();
   const link = await steleFund.link();
