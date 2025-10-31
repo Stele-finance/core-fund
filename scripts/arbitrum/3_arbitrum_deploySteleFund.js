@@ -8,21 +8,27 @@ async function main() {
   console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
   // Arbitrum addresses
-  const steleTokenAddress = "0xb4fb28a64c946c909d86388be279f8222fd42599"; // Existing STELE token on Arbitrum
-  const timeLockAddress = "0x1ea89dC5FD40F5c15313b77E12833563F6C33730"; // From step 1
   const wethTokenAddress = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"; // Arbitrum WETH
   const usdcTokenAddress = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"; // Arbitrum USDC
+  const wbtcTokenAddress = "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f"; // Arbitrum WBTC
+  const uniTokenAddress = "0xFa7F8980b0f1E64A2062791cc3b0871572f1F7f0"; // Arbitrum UNI
+  const linkTokenAddress = "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4"; // Arbitrum LINK
 
-  console.log(`🎯 Stele Token: ${steleTokenAddress}`);
   console.log(`💰 WETH: ${wethTokenAddress}`);
-  console.log(`🏛️ TimeLock: ${timeLockAddress}`);
+  console.log(`💵 USDC: ${usdcTokenAddress}`);
+  console.log(`💎 WBTC: ${wbtcTokenAddress}`);
+  console.log(`🎨 UNI: ${uniTokenAddress}`);
+  console.log(`🔗 LINK: ${linkTokenAddress}`);
 
   // Step 1: Deploy SteleFundSetting
   console.log("📝 Step 2: Deploying SteleFundSetting on Arbitrum...");
   const SteleFundSetting = await ethers.getContractFactory("SteleFundSetting");
   const steleFundSetting = await SteleFundSetting.deploy(
     wethTokenAddress,
-    usdcTokenAddress
+    usdcTokenAddress,
+    wbtcTokenAddress,
+    uniTokenAddress,
+    linkTokenAddress
   );
   await steleFundSetting.deployed();
   const steleFundSettingAddress = await steleFundSetting.address;
@@ -55,18 +61,8 @@ async function main() {
   await infoOwnershipTx.wait();
   console.log(`✅ SteleFundInfo ownership transferred to: ${steleFundAddress}\n`);
 
-  // Step 5: Transfer SteleFundSetting ownership to TimeLock
-  console.log("🏛️ Step 5: Transferring SteleFundSetting ownership to TimeLock...");
-  try {
-    const ownershipTx = await steleFundSetting.setOwner(timeLockAddress);
-    await ownershipTx.wait();
-    console.log(`✅ SteleFundSetting ownership transferred to: ${timeLockAddress}\n`);
-  } catch (error) {
-    console.log("⚠️  Ownership transfer skipped (update TimeLock address manually)\n");
-  }
-
-  // Step 6: Verify setup
-  console.log("🔍 Step 6: Verifying deployment...");
+  // Step 5: Verify setup
+  console.log("🔍 Step 5: Verifying deployment...");
   const currentOwner = await steleFundSetting.owner();
   const infoOwner = await steleFundInfo.owner();
   const weth9 = await steleFundSetting.weth9();
@@ -77,7 +73,6 @@ async function main() {
   console.log(`   SteleFundInfo owner: ${infoOwner}`);
   console.log(`   WETH9: ${weth9}`);
   console.log(`   USDC: ${usdc}`);
-  console.log(`   Governance enabled: ${currentOwner === timeLockAddress}`);
   console.log(`   Info ownership correct: ${infoOwner === steleFundAddress}\n`);
 
   // Final Summary
@@ -86,7 +81,6 @@ async function main() {
   console.log(`📝 SteleFundSetting: ${steleFundSettingAddress}`);
   console.log(`📊 SteleFundInfo: ${steleFundInfoAddress}`);
   console.log(`💼 SteleFund: ${steleFundAddress}`);
-  console.log(`🏛️ Governance: ${currentOwner === timeLockAddress ? '✅ Enabled' : '❌ Disabled'}`);
   console.log("=".repeat(60));
 
   // Save deployment addresses for verification
@@ -97,13 +91,8 @@ async function main() {
       SteleFundSetting: steleFundSettingAddress,
       SteleFund: steleFundAddress,
       SteleFundInfo: steleFundInfoAddress,
-      SteleToken: steleTokenAddress,
       WETH: wethTokenAddress,
-      TimeLock: timeLockAddress
-    },
-    governance: {
-      enabled: currentOwner === timeLockAddress,
-      owner: currentOwner
+      USDC: usdcTokenAddress
     },
     transactions: {
       steleFundSetting: steleFundSetting.deploymentTransaction,

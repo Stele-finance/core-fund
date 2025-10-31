@@ -29,6 +29,5 @@ interface ISteleFund {
   function swap(uint256 fundId, SwapParams[] calldata trades) external;
   function withdrawFee(uint256 fundId, address token, uint256 percentage) external payable;
   function setManagerNFTContract(address _managerNFTContract) external;
-  function getManagerNFTContract() external view returns (address);
   function mintManagerNFT(uint256 fundId) external returns (uint256);
 }

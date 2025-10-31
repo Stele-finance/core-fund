@@ -10,7 +10,6 @@ async function main() {
   // mainnet addresses - Update with actual deployed addresses from step 3
   const steleFundAddress = "0x7D38435F9D78DFc9FDe6E9547C7f96F57D6430d3";
   const steleFundInfoAddress = "0x331E2988f235471C7b8B4aa991962A72d8C02b5A";
-  const timeLockAddress = "0x86e3Ee34d75D1B688D2a061B53B686299bcF3355"; // From step 1
 
   // Validate addresses
   if (!steleFundInfoAddress) {
@@ -36,12 +35,12 @@ async function main() {
   await setNFTTx.wait();
   console.log(`✅ SteleFundManagerNFT address set in SteleFund\n`);
 
-  // Step 3: Transfer SteleFund ownership to TimeLock
-  console.log("🏛️ Step 3: Transferring SteleFund ownership to TimeLock...");
+  // Step 3: Transfer SteleFund ownership to Zero Address
+  console.log("🏛️ Step 3: Transferring SteleFund ownership to Zero Address...");
   try {
-    const ownershipTx = await steleFund.transferOwnership(timeLockAddress);
+    const ownershipTx = await steleFund.transferOwnership(ethers.constants.AddressZero);
     await ownershipTx.wait();
-    console.log(`✅ SteleFund ownership transferred to: ${timeLockAddress}\n`);
+    console.log(`✅ SteleFund ownership transferred to: ${ethers.constants.AddressZero}\n`);
   } catch (error) {
     console.log("⚠️  SteleFund ownership transfer failed:", error.message);
     console.log("   Please transfer ownership manually after deployment\n");
@@ -66,7 +65,6 @@ async function main() {
   console.log(`   FundInfo correctly set: ${fundInfo === steleFundInfoAddress}`);
   console.log(`   SteleFund correctly set: ${fundContract === steleFundAddress}`);
   console.log(`   NFT address correctly set: ${managerNFTAddress === steleFundManagerNFTAddress}`);
-  console.log(`   SteleFund governance enabled: ${steleFundOwner === timeLockAddress}\n`);
 
   // Final Summary
   console.log("🎉 DEPLOYMENT COMPLETE ON MAINNET! 🎉");

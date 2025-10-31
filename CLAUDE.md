@@ -1,23 +1,21 @@
 # SteleFund Core - Claude Code Documentation
 
 ## Project Overview
-SteleFund Core is a decentralized fund management system with smart contracts that enable governance-controlled fund settings management through voting mechanisms.
+SteleFund Core is a decentralized fund management system with smart contracts that enable on-chain fund creation, investment, and trading.
 
 ## Contract Architecture
 
 ### Core Contracts
-- **SteleFundSetting.sol**: Fund settings management (investable tokens, fees, minimum pool amounts)
+- **SteleFundSetting.sol**: Fund settings management (investable tokens, fees, slippage settings)
 - **SteleFund.sol**: Main fund contract (swaps, deposits/withdrawals)
 - **SteleFundInfo.sol**: Fund information and investor data management
-
-### Governance Contracts
-- **SteleFundGovernor.sol**: OpenZeppelin-based governance contract
-- **TimeLock.sol**: Governance execution delay contract
+- **SteleFundManagerNFT.sol**: Manager NFT for fund performance records
 
 ### Utilities
-- **Token.sol**: ERC20 token implementation
-- **FullMath.sol**: Mathematical operations library
+- **Token.sol**: ERC20 token base contract
+- **PriceOracle.sol**: Uniswap V3 price oracle library
 - **Path.sol**: Uniswap path encoding library
+- **NFTSVG.sol**: SVG generation for Manager NFTs
 
 ## Deployment Process
 
@@ -36,54 +34,34 @@ The project supports the following networks:
 
 #### Mainnet Deployment
 ```bash
-# 1. Deploy TimeLock
-npx hardhat run scripts/mainnet/1_deployTimeLock.js --network mainnet
-
-# 2. Deploy Governor (requires TimeLock address from step 1)
-npx hardhat run scripts/mainnet/2_deployGovernor.js --network mainnet
-
-# 3. Deploy SteleFund ecosystem (requires TimeLock address from step 1)
+# 1. Deploy SteleFund ecosystem
 npx hardhat run scripts/mainnet/3_deploySteleFund.js --network mainnet
+
+# 2. Deploy SteleFundManagerNFT
+npx hardhat run scripts/mainnet/4_deploySteleFundManagerNFT.js --network mainnet
 ```
 
 #### Arbitrum Deployment
 ```bash
-# 1. Deploy TimeLock
-npx hardhat run scripts/arbitrum/1_arbitrum_deployTimeLock.js --network arbitrum
-
-# 2. Deploy Governor (requires TimeLock address from step 1)
-npx hardhat run scripts/arbitrum/2_arbitrum_deployGovernor.js --network arbitrum
-
-# 3. Deploy SteleFund ecosystem (requires TimeLock address from step 1)
+# 1. Deploy SteleFund ecosystem
 npx hardhat run scripts/arbitrum/3_arbitrum_deploySteleFund.js --network arbitrum
+
+# 2. Deploy SteleFundManagerNFT
+npx hardhat run scripts/arbitrum/4_arbitrum_deploySteleFundManagerNFT.js --network arbitrum
 ```
 
 ### Token Addresses
-- **Mainnet STELE**: `0x71c24377e7f24b6d822C9dad967eBC77C04667b5`
-- **Arbitrum STELE**: `0xF26A6c38E011E428B2DaC5E874BF26fb12665136`
 - **Mainnet WETH**: `0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2`
+- **Mainnet USDC**: `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`
 - **Arbitrum WETH**: `0x82aF49447D8a07e3bd95BD0d56f35241523fBab1`
+- **Arbitrum USDC**: `0xaf88d065e77c8cC2239327C5EDb3A432268e5831`
 
-## Governance System
+## Fund Settings
 
-### Governance Parameters
-- **Quorum**: 4% of total token supply
-- **Voting Period**: 7 days (50400 blocks)
-- **Voting Delay**: 1 block
-- **Execution Delay**: 2 days (TimeLock)
-
-### Governance Process
-1. **Proposal Creation**: STELE token holders create proposals
-2. **Voting**: 7-day voting period
-3. **Queuing**: Passed proposals are queued in TimeLock
-4. **Execution**: Anyone can execute after 2-day delay
-
-### Governable Functions
-The following functions in SteleFundSetting contract are controlled through governance:
-- `setMinPoolAmount(uint256)`: Set minimum pool amount
-- `setManagerFee(uint256)`: Set manager fee
-- `setIsInvestable(address)`: Add investable token
-- `resetIsInvestable(address)`: Remove investable token
+### Default Settings
+- **Manager Fee**: 1% (100 basis points)
+- **Max Slippage**: 3% (300 basis points)
+- **Investable Tokens**: WETH, USDC (immutable after deployment)
 
 ## Development Commands
 
@@ -105,43 +83,50 @@ npx hardhat node
 ## Project Structure
 ```
 contracts/
-├── SteleFund.sol              # Main fund contract
-├── SteleFundInfo.sol          # Fund information management
-├── SteleFundSetting.sol       # Fund settings management
-├── SteleFundGovernor.sol      # Governance contract
-├── TimeLock.sol               # Execution delay contract
+├── SteleFund.sol                    # Main fund contract
+├── SteleFundInfo.sol                # Fund information management
+├── SteleFundSetting.sol             # Fund settings management
+├── SteleFundManagerNFT.sol          # Manager NFT contract
 ├── base/
-│   └── Token.sol              # ERC20 token
+│   └── Token.sol                    # ERC20 token base
 ├── interfaces/
 │   ├── ISteleFund.sol
 │   ├── ISteleFundInfo.sol
-│   └── ISteleFundSetting.sol
+│   ├── ISteleFundSetting.sol
+│   ├── ISteleFundManagerNFT.sol
+│   └── IToken.sol
 └── libraries/
-    ├── FullMath.sol
-    └── Path.sol
+    ├── PriceOracle.sol              # Uniswap V3 price oracle
+    ├── Path.sol                     # Path encoding
+    ├── BytesLib.sol                 # Bytes manipulation
+    └── NFTSVG.sol                   # SVG generation
 
 scripts/
 ├── mainnet/
-│   ├── 1_deployTimeLock.js
-│   ├── 2_deployGovernor.js
-│   └── 3_deploySteleFund.js
+│   ├── 3_deploySteleFund.js
+│   ├── 4_deploySteleFundManagerNFT.js
+│   └── 5_deploySteleFundManagerNFTonly.js
 └── arbitrum/
-    ├── 1_arbitrum_deployTimeLock.js
-    ├── 2_arbitrum_deployGovernor.js
-    └── 3_arbitrum_deploySteleFund.js
+    ├── 3_arbitrum_deploySteleFund.js
+    ├── 4_arbitrum_deploySteleFundManagerNFT.js
+    └── 5_arbitrum_deploySteleFundManagerNFTonly.js
 ```
 
 ## Security Features
 
 ### Access Control
-- **SteleFundSetting**: TimeLock is owner (governance controlled)
+- **SteleFundSetting**: Immutable settings (no owner)
 - **SteleFundInfo**: SteleFund contract is owner
-- **TimeLock**: Governance contract has proposer/executor roles
+- **SteleFund**: Owner can set Manager NFT contract
+- **Manager Verification**: Only fund managers can execute swaps and withdraw fees
 
 ### SafeGuards
-- 2-day execution delay prevents malicious proposals
-- Investable tokens can only be added if they have sufficient liquidity
-- STELE and WETH are non-removable base tokens
+- Reentrancy protection on all state-changing functions
+- Minimum deposit: $10 USD equivalent
+- Maximum swaps per transaction: 10
+- Maximum funds per investor: 100
+- Slippage protection using Uniswap V3 spot prices
+- Manager NFTs are soulbound (non-transferable)
 
 ## Integration Notes
 
@@ -152,21 +137,26 @@ scripts/
 
 ### Token Standards
 - ERC20 compatible
-- ERC20Votes (for governance)
+- ERC721 for Manager NFTs
 - OpenZeppelin standard compliant
 
 ## Common Tasks
 
-### Adding a new investable token via governance
-1. Create proposal calling `setIsInvestable(tokenAddress)`
-2. Vote on proposal for 7 days
-3. Queue proposal in TimeLock
-4. Execute after 2-day delay
+### Creating a Fund
+1. Call `SteleFundInfo.create()` to create a new fund
+2. Fund creator becomes the manager
+3. Manager can swap tokens and withdraw fees
 
-### Changing manager fee via governance
-1. Create proposal calling `setManagerFee(newFeeAmount)`
-2. Follow standard governance process
+### Joining a Fund
+1. Call `SteleFundInfo.join(fundId)` to join an existing fund
+2. Deposit ETH via fallback function with fundId in calldata
+3. Receive proportional shares based on deposit value
 
-### Emergency procedures
-- Admin can revoke roles before transferring full control to governance
-- TimeLock admin role should be revoked after setup is complete
+### Manager Operations
+- **Swap Tokens**: Manager calls `swap()` with trade parameters
+- **Withdraw Fees**: Manager calls `withdrawFee()` to claim accumulated fees
+- **Mint NFT**: Manager calls `mintManagerNFT()` to mint performance certificate
+
+### Investor Operations
+- **Deposit**: Send ETH to contract with fundId (32 bytes) in calldata
+- **Withdraw**: Call `withdraw(fundId, percentage)` to withdraw portion of holdings

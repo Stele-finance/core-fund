@@ -201,11 +201,4 @@ library NFTSVG {
         
         return string(abi.encodePacked(string(str), '...'));
     }
-
-    function getManagerColor(address manager) internal pure returns (string memory) {
-        bytes32 hash = keccak256(abi.encodePacked(manager));
-        uint256 hue = uint256(hash) % 360;
-        return string(abi.encodePacked('hsl(', hue.toString(), ', 70%, 50%)'));
-    }
-
 }

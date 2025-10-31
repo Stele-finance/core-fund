@@ -298,9 +298,6 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     require(ISteleFundSetting(setting).isInvestable(trade.tokenOut), "NWT");
     require(trade.amountIn <= ISteleFundInfo(info).getFundTokenAmount(fundId, trade.tokenIn), "NET");
 
-    // Validate token limits
-    _validateSwapParameters(fundId, trade);
-
     // Calculate minimum output with slippage protection (ignores Manager's input)
     uint256 minOutput = _calculateMinOutput(trade.tokenIn, trade.tokenOut, trade.amountIn);
 
@@ -331,17 +328,6 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
 
     require(ISteleFundSetting(setting).isInvestable(tokenOut), "NWT");
     require(trade.amountIn <= ISteleFundInfo(info).getFundTokenAmount(fundId, tokenIn), "NET");
-
-    // Validate token limits
-    _validateSwapParameters(fundId, SwapParams({
-      swapType: trade.swapType,
-      tokenIn: tokenIn,
-      tokenOut: tokenOut,
-      path: trade.path,
-      fee: 0,
-      amountIn: trade.amountIn,
-      amountOutMinimum: trade.amountOutMinimum
-    }));
 
     // Calculate minimum output with slippage protection (ignores Manager's input)
     uint256 minOutput = _calculateMinOutput(tokenIn, tokenOut, trade.amountIn);
@@ -374,21 +360,6 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     ISteleFundInfo(info).decreaseFundToken(fundId, tokenIn, amountIn);
     ISteleFundInfo(info).increaseFundToken(fundId, tokenOut, amountOut);
     emit Swap(fundId, tokenIn, tokenOut, amountIn, amountOut);
-  }
-  
-  // Helper function to validate swap parameters
-  function _validateSwapParameters(uint256 fundId, SwapParams memory trade) private view {
-    // Check maxTokens limit for new tokens
-    if (ISteleFundInfo(info).getFundTokenAmount(fundId, trade.tokenOut) == 0) {
-      IToken.Token[] memory fundTokens = ISteleFundInfo(info).getFundTokens(fundId);
-      uint256 currentTokenTypes = 0;
-      for (uint256 i = 0; i < fundTokens.length; i++) {
-        if (fundTokens[i].amount > 0) {
-          currentTokenTypes++;
-        }
-      }
-      require(currentTokenTypes < ISteleFundSetting(setting).maxTokens(), "MAX");
-    }
   }
 
   // Calculate minimum output with slippage protection using spot price
@@ -469,16 +440,17 @@ contract SteleFund is ISteleFund, ReentrancyGuard {
     emit OwnershipTransferred(msg.sender, newOwner);
   }
 
+  // Renounce ownership of the contract
+  function renounceOwnership() external onlyOwner {
+    emit OwnershipTransferred(owner, address(0));
+    owner = address(0);
+  }
+
   // Set Manager NFT Contract (only callable by info contract owner)
   function setManagerNFTContract(address _managerNFTContract) external override onlyOwner {
     require(_managerNFTContract != address(0), "NZ");
     managerNFTContract = _managerNFTContract;
     emit ManagerNFTContractSet(_managerNFTContract);
-  }
-
-  // Get Manager NFT Contract address
-  function getManagerNFTContract() external view override returns (address) {
-    return managerNFTContract;
   }
 
   // Mint Manager NFT (only callable by fund manager)
