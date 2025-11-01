@@ -8,8 +8,8 @@ async function main() {
   console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
   // mainnet addresses - Update with actual deployed addresses
-  const steleFundAddress = "0x7D38435F9D78DFc9FDe6E9547C7f96F57D6430d3";
-  const steleFundInfoAddress = "0x331E2988f235471C7b8B4aa991962A72d8C02b5A";
+  const steleFundAddress = "0x63e7AA0D59AE87319103FB3B25D39fF7f27E1D59";
+  const steleFundInfoAddress = "0x7eCda42b53741709794165f58eb164Ad9426eaDb";
 
   // Validate addresses
   if (!steleFundAddress || !steleFundInfoAddress) {

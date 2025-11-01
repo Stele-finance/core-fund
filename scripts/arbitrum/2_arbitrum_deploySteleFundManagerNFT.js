@@ -8,8 +8,8 @@ async function main() {
   console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
   // Arbitrum addresses - Update with actual deployed addresses from step 3
-  const steleFundAddress = "0xB3Bb5c1a546b161Ff4d1fCb90cee66fcb71992Ce";
-  const steleFundInfoAddress = "0x3E601A11EA83372a3C092CA46f6E4bFa9562B2e3";
+  const steleFundAddress = "0x24Ab64Da6a6A985921aDBe494e55c10571121F52";
+  const steleFundInfoAddress = "0xb0D008124C85180e5E9F242FA69d32686b59674A";
 
   // Validate addresses
   if (!steleFundInfoAddress) {
@@ -35,15 +35,15 @@ async function main() {
   await setNFTTx.wait();
   console.log(`✅ SteleFundManagerNFT address set in SteleFund\n`);
 
-  // Step 3: Transfer SteleFund ownership to Zero Address
-  console.log("🏛️ Step 3: Transferring SteleFund ownership to Zero Address...");
+  // Step 3: Renounce SteleFund ownership (transfer to Zero Address)
+  console.log("🏛️ Step 3: Renouncing SteleFund ownership...");
   try {
-    const ownershipTx = await steleFund.renounceOwnership(ethers.constants.AddressZero);
+    const ownershipTx = await steleFund.renounceOwnership();
     await ownershipTx.wait();
-    console.log(`✅ SteleFund ownership transferred to: ${ethers.constants.AddressZero}\n`);
+    console.log(`✅ SteleFund ownership renounced (transferred to: ${ethers.constants.AddressZero})\n`);
   } catch (error) {
-    console.log("⚠️  SteleFund ownership transfer failed:", error.message);
-    console.log("   Please transfer ownership manually after deployment\n");
+    console.log("⚠️  SteleFund ownership renouncement failed:", error.message);
+    console.log("   Please renounce ownership manually after deployment\n");
   }
 
   // Step 4: Verify setup
